@@ -10,14 +10,24 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
   <!-- Open Graph / Share Previews (Slack, iMessage, Twitter, Discord, LinkedIn) -->
+  <!-- Customizable via ?og=https://... URL parameter -->
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Valentine Creator — Make your own" />
   <meta property="og:description" content="Create a personalized Valentine message. Upload 9 photos, write a message, get a shareable link. No login needed." />
-  <meta property="og:image" content="https://d-solve.de/og-image.png" />
+  <meta property="og:image" id="og-image" content="https://d-solve.de/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:url" content="https://d-solve.de/creator/" />
   <meta property="og:site_name" content="d-solve.de" />
+
+  <!-- Allow custom OG image via ?og=https://... -->
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const customOG = params.get('og');
+    if (customOG) {
+      document.getElementById('og-image').setAttribute('content', customOG);
+    }
+  </script>
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />

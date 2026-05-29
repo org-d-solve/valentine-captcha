@@ -9,13 +9,21 @@
 <!-- Favicon -->
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
 
-<!-- Open Graph / share previews -->
+<!-- Open Graph / share previews (customizable via ?og= URL param) -->
 <meta property="og:type" content="website" />
 <meta property="og:title" content="You've received a Valentine ❤" />
 <meta property="og:description" content="For security reasons, please verify you are a real human." />
-<meta property="og:image" content="og-image.png" />
+<meta property="og:image" id="og-image" content="og-image.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
+<script>
+  // Allow custom OG image via ?og=https://...
+  const params = new URLSearchParams(window.location.search);
+  const customOG = params.get('og');
+  if (customOG) {
+    document.getElementById('og-image').setAttribute('content', customOG);
+  }
+</script>
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="You've received a Valentine ❤" />
 <meta name="twitter:description" content="For security reasons, please verify you are a real human." />
