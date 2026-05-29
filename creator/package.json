@@ -1,0 +1,17 @@
+{
+  "name": "valentine-creator",
+  "version": "1.0.0",
+  "description": "Valentines Creator as a Service — serverless SaaS on GCP",
+  "private": true,
+  "scripts": {
+    "dev": "./scripts/dev.sh",
+    "deploy": "./scripts/deploy.sh",
+    "deploy:staging": "./scripts/deploy.sh staging",
+    "teardown": "./scripts/teardown.sh",
+    "test": "node --test tests/",
+    "build:frontend": "cd frontend && npm install && npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

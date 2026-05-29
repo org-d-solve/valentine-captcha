@@ -1,0 +1,22 @@
+rules_version = '2';
+
+// Uploaded images live under /uploads/{configId}/... with random configIds.
+// Writes happen only via Cloud Functions (Admin SDK, bypasses these rules).
+// Public reads are allowed so recipients can load images by their unguessable
+// URL — but listing is impossible (Firebase Storage has no public listing),
+// so the random path is the access control.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /uploads/{configId}/{imageId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /website/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

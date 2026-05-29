@@ -1,0 +1,10 @@
+# Copy to terraform.tfvars and fill in your values.
+
+project_id         = "valentines-creator-2026"
+region             = "us-central1"
+environment        = "prod"
+bucket_name        = "valentines-creator-prod"
+upload_ttl_days    = 30
+valentine_page_url = "https://d-solve.de"
+frontend_url       = "https://creator.d-solve.de"
+function_max_instances = 50

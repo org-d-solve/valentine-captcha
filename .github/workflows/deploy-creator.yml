@@ -1,0 +1,110 @@
+name: Deploy Valentine Creator
+
+on:
+  push:
+    branches: [feature/saas-valentine-creator, main]
+    paths:
+      - 'creator/**'
+      - '.github/workflows/deploy-creator.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - prod
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install function deps
+        working-directory: creator/backend/functions/uploadImages
+        run: npm install
+
+      - name: Start Firestore emulator
+        run: |
+          npm install -g firebase-tools
+          firebase emulators:start --only firestore,storage &
+          sleep 10
+
+      - name: Start function
+        working-directory: creator/backend/functions/uploadImages
+        env:
+          FIRESTORE_EMULATOR_HOST: localhost:8081
+          STORAGE_EMULATOR_HOST: http://localhost:9199
+          GCS_BUCKET: valentines-creator-ci
+        run: |
+          npx functions-framework --target=uploadImages --port=8080 &
+          sleep 5
+
+      - name: Run integration tests
+        working-directory: creator
+        env:
+          TEST_API_URL: http://localhost:8080
+        run: npm test
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Build
+        working-directory: creator/frontend
+        run: |
+          npm install
+          npm run build
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: creator/frontend/dist
+
+  deploy:
+    name: Deploy to GCP
+    runs-on: ubuntu-latest
+    needs: [test, build-frontend]
+    # Only deploy on manual trigger or main branch (protect against accidental deploys)
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write # for Workload Identity Federation
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Deploy
+        working-directory: creator
+        run: |
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh ${{ github.event.inputs.environment || 'prod' }}
