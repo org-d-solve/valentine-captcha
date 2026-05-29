@@ -1,6 +1,6 @@
-# Netcap Server: Multicontainer Valentine Creator Deployment
+# Netcup Server: Multicontainer Valentine Creator Deployment
 
-This is the **production-grade, reusable architecture** for deploying the Valentine Creator on your Netcap server with Docker/Kubernetes. Use this as your template for all future multicontainer apps.
+This is the **production-grade, reusable architecture** for deploying the Valentine Creator on your Netcup server with Docker/Kubernetes. Use this as your template for all future multicontainer apps.
 
 ---
 
@@ -8,7 +8,7 @@ This is the **production-grade, reusable architecture** for deploying the Valent
 
 ```
 ┌─────────────────────────────────────────┐
-│  Your Netcap Server (192.168.x.x)       │
+│  Your Netcup Server (192.168.x.x)       │
 ├─────────────────────────────────────────┤
 │  Traefik (reverse proxy + TLS)          │
 │  ├─ routes /creator/ → creator-web     │
@@ -29,7 +29,7 @@ This is the **production-grade, reusable architecture** for deploying the Valent
 
 User accesses: https://d-solve.de/v/abc123
     ↓
-Traefik on Netcap routes to gcp-proxy container
+Traefik on Netcup routes to gcp-proxy container
     ↓
 gcp-proxy reverse-proxies to GCP Cloud Functions
     ↓
@@ -69,7 +69,7 @@ Response redirects to Valentine page
 ### Step 1: Install Docker & Docker Compose
 
 ```bash
-# On Netcap server
+# On Netcup server
 curl -fsSL https://get.docker.com | bash
 sudo usermod -aG docker $USER
 sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
@@ -424,7 +424,7 @@ curl -k https://d-solve.de/api/v1/upload
 curl -kL https://d-solve.de/v/test-short-id
 
 # Check Traefik dashboard (internal only)
-# ssh tunnel: ssh -L 8080:localhost:8080 user@netcap-ip
+# ssh tunnel: ssh -L 8080:localhost:8080 user@netcup-ip
 # Then: http://localhost:8080/dashboard/
 ```
 
@@ -449,7 +449,7 @@ I can provide full k3s manifests if you want that path.
 ## 🚀 Deployment Checklist
 
 ```
-[ ] Install Docker + Docker Compose on Netcap
+[ ] Install Docker + Docker Compose on Netcup
 [ ] Create /opt/valentine-creator directory
 [ ] Copy docker-compose.yml, Dockerfiles, nginx configs
 [ ] Update traefik.yml with your email
@@ -492,7 +492,7 @@ Done. New app live at `https://d-solve.de/myapp`.
 
 | Item | Cost |
 |------|------|
-| Netcap Server (running already) | $0 additional |
+| Netcup Server (running already) | $0 additional |
 | Docker/Docker Compose | Free (open source) |
 | Traefik | Free (open source) |
 | Let's Encrypt SSL | Free |
@@ -500,7 +500,7 @@ Done. New app live at `https://d-solve.de/myapp`.
 | **Total (Valentine week)** | **$3–5** |
 | **Annual** | **~$5** |
 
-**vs. nginx on d-solve.de:** No difference in cost, but this Netcap setup is **reusable for unlimited apps**.
+**vs. nginx on d-solve.de:** No difference in cost, but this Netcup setup is **reusable for unlimited apps**.
 
 ---
 
