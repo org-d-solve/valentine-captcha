@@ -30,21 +30,49 @@ Users can:
 ## 🏗️ Architecture
 
 ```
-Creator UI (React)
-    ↓ (Image upload + config)
+User clicks: https://d-solve.de/v/abc123
+    ↓
+Nginx on d-solve.de reverses to Cloud Functions
+    ↓
 Cloud Functions (Node.js)
-    ↓ (Validates, uploads)
-GCS Bucket + Firestore
-    ↓ (Stores images + URLs)
-URL Resolver (Cloud Function)
-    ↓ (Redirects short → long URL)
+    ↓ (Validates requests, looks up config)
+Firestore (configs) + Cloud Storage (images)
+    ↓ (Retrieves metadata + image URLs)
+Returns 302 redirect
+    ↓
 Valentine Page (Existing)
     ↓ (Displays personalized message)
 User sees: "You're my Valentine!"
 ```
 
+**All short links via your domain:**
+- Creator UI: `https://d-solve.de/creator/`
+- Upload API: `https://d-solve.de/api/v1/upload`
+- Short links: `https://d-solve.de/v/{shortId}`
+- Valentine page: `https://d-solve.de/?to=...&from=...`
+
 **Full architecture:** See [ARCHITECTURE.md](./ARCHITECTURE.md)  
 **Cost analysis:** See [COSTS.md](./COSTS.md)
+
+---
+
+## 🎯 What Users See
+
+### With this setup:
+
+Your wife receives:
+```
+https://d-solve.de/v/aBcD3fGhIjKlMnOp
+```
+
+When she clicks, she's redirected to:
+```
+https://d-solve.de/?to=Sarah&from=Alex&msg=I%20love%20you&img0=https://storage.googleapis.com/...&etc
+```
+
+And sees:
+- The fake CAPTCHA with her 9 photos
+- After completing it: your personalized message
 
 ---
 
@@ -97,6 +125,14 @@ firebase setup:emulators:storage
 firebase emulators:start --only firestore,storage
 # Runs on localhost:4000, localhost:9199
 ```
+
+---
+
+## 🌍 Full Production Deployment
+
+This uses your existing **d-solve.de server** with nginx as a reverse proxy.
+
+**Cost:** $3–5 for Valentine week. $0 the rest of the year.
 
 ---
 
@@ -218,41 +254,38 @@ gsutil iam ch allUsers:objectViewer \
   gs://valentines-creator-prod/website/
 ```
 
-### Step 6: Set Up Load Balancer (Optional, for custom domain)
+### Step 6: Configure Nginx (On d-solve.de server)
+
+SSH into your d-solve.de server and run:
 
 ```bash
-# Create backend service
-gcloud compute backend-services create valentines-backend \
-  --global \
-  --load-balancing-scheme EXTERNAL \
-  --protocol HTTP
+# Download the setup script
+wget https://raw.githubusercontent.com/org-d-solve/valentine-captcha/feature/saas-valentine-creator/creator/scripts/setup-nginx.sh
+chmod +x setup-nginx.sh
 
-# Create URL map
-gcloud compute url-maps create valentines-urls \
-  --default-service=valentines-backend
+# Or if you have the repo cloned:
+cd valentine-captcha/creator
 
-# Create HTTP proxy
-gcloud compute target-http-proxies create valentines-proxy \
-  --url-map=valentines-urls
-
-# Create forwarding rule
-gcloud compute forwarding-rules create valentines-fr \
-  --global \
-  --target-http-proxy=valentines-proxy \
-  --address=valentines-ip \
-  --ports=80
+# Run the nginx setup (fills in your project ID + region)
+./scripts/setup-nginx.sh valentines-creator-2026 us-central1
+# (replace with your actual project ID)
 ```
 
-### Step 7: Configure Domain (DNS)
+This automatically:
+- Copies the nginx config
+- Substitutes your GCP project ID and region
+- Tests the config
+- Reloads nginx
+
+**That's it!** Now your d-solve.de server reverse-proxies to the Cloud Functions.
+
+### Step 7: Verify DNS
+
+Your d-solve.de DNS should already point to your server (it's your existing domain).
+Just verify the A record exists:
 
 ```bash
-# Get Load Balancer IP
-gcloud compute forwarding-rules describe valentines-fr --global
-
-# In your DNS provider (Google Domains, Route53, etc.):
-# Create A record:
-# d-solve.de  A  YOUR_LOAD_BALANCER_IP
-# creator.d-solve.de  CNAME  YOUR_LOAD_BALANCER_IP
+nslookup d-solve.de
 ```
 
 ---
@@ -280,9 +313,9 @@ UPLOAD_TTL_DAYS=7
 RATE_LIMIT_PER_HOUR=10   # Creator endpoint
 RATE_LIMIT_RESOLVER=1000 # Resolver endpoint
 
-# URLs
-FRONTEND_URL=https://creator.d-solve.de
-API_URL=https://api.valentines.d-solve.de
+# URLs (via d-solve.de nginx proxy)
+FRONTEND_URL=https://d-solve.de
+API_URL=https://d-solve.de/api/v1
 VALENTINE_PAGE_URL=https://d-solve.de
 ```
 
@@ -302,7 +335,7 @@ Images are stored with:
 - **Random UUIDs** in path (unguessable)
 - **No directory listing** (GCS default)
 - **Public read** only to direct URLs
-- **Auto-deletion** after TTL
+- **Auto-deletion** after TTL (default 7 days)
 
 Example path:
 ```
@@ -316,10 +349,18 @@ gs://valentines-creator-prod/uploads/
 ### URL Shortening Security
 
 Short IDs are:
-- **16 random base62 characters** (2^96 space)
+- **16 random base62 characters** (2^96 space = effectively unguessable)
 - **No sequential patterns** (not enumerable)
-- **No user tracking** (anonymous creation)
-- **TTL-based deletion** (7 days default)
+- **No user tracking** (anonymous creation, no cookies)
+- **TTL-based auto-deletion** (Firestore deletes configs + URLs after 7 days)
+- **Nginx reverse proxy** protects the Cloud Functions URL from being exposed
+
+### DNS & Proxy Security
+
+- **Nginx on d-solve.de** is between users and GCP
+- Users never see the long Cloud Functions URL
+- Nginx validates HTTPS, handles SSL termination
+- Backend is internal — only accessible through nginx proxy
 
 ### CORS & Rate Limiting
 

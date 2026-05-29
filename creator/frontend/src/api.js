@@ -2,7 +2,11 @@
  * API client for the Valentine Creator backend.
  *
  * In development, Vite proxies /api → http://localhost:8080.
- * In production, set VITE_API_URL to the deployed API base.
+ * In production, uses the d-solve.de nginx reverse proxy.
+ *
+ * VITE_API_URL env var (set during build):
+ *   Development: http://localhost:8080 (or /api/v1 via Vite proxy)
+ *   Production: https://d-solve.de/api/v1 (via nginx reverse proxy)
  */
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';

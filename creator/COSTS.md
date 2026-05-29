@@ -212,13 +212,11 @@ Geo-distribution:
 | Upload (10.5 TB/week) | 10,500 GB | $210.00 |
 | Retrieval (2 TB) | 2,000 GB | $100.00 |
 | **Cloud CDN** | 100,000 GB | $120.00 |
-| **Cloud Load Balancer** | | $35.00 |
-| **Cloud Armor** (DDoS protection) | | $200.00 |
-| **DNS** | | $0.20 |
-| **Data Transfer** (inter-region) | 5 TB | $250.00 |
+| **Nginx Reverse Proxy** (d-solve.de) | | $0 |
+| **DNS** | (A record on d-solve.de) | $0 |
 | **Monitoring & Logging** | | $50.00 |
 | **Other** | | $50.00 |
-| **TOTAL** | | **$5,348.70** |
+| **TOTAL** | | **$4,863.70** |
 
 **7-Day Valentine Week Cost: ~$763.24**
 
@@ -340,8 +338,8 @@ Use document paths to optimize reads:
 |----------|--------|-----------|---------|--------------|
 | **A: Small** | 1-100 users | $0.10 | $0.73 | $0.001 |
 | **B: Medium** | 100-1k | $1.40 | $9.78 | $0.010 |
-| **C: Large** | 1k-10k | $16.15 | $113.05 | $0.011 |
-| **D: Very Large** | 10k+ | $763.24 | $5,348.70 | $0.038 |
+| **C: Large** | 1k-10k | $16.15 | $107.05 | $0.011 |
+| **D: Very Large** | 10k+ | $763.24 | $4,863.70 | $0.038 |
 
 *Assuming 7-day Valentine week only
 
@@ -352,6 +350,26 @@ Scenario B: $0.70 (compression + caching)
 Scenario C: $8.00 (compression + caching + regional)
 Scenario D: $2,000+ (requires mitigation strategies)
 ```
+
+---
+
+## 🌍 DNS & Reverse Proxy Architecture
+
+**We use your existing d-solve.de server** to route traffic:
+
+```
+User clicks: https://d-solve.de/v/aBcD3fGhIjKlMnOp
+    ↓
+Nginx on d-solve.de reverses to GCP Cloud Functions
+    ↓
+https://us-central1-project-id.cloudfunctions.net/resolveUrl?shortId=...
+    ↓
+Returns 302 redirect to Valentine page
+    ↓
+User sees: https://d-solve.de/?to=Sarah&from=Alex&img0=...
+```
+
+**Cost impact:** $0 additional (uses existing d-solve.de infrastructure)
 
 ---
 
@@ -412,9 +430,9 @@ Recommendation: Just enable during Valentine period
 ```
 Traffic: 100-1,000 users
 Cost: $1.40-15 per week (with optimizations)
-Infrastructure: Single region + caching
-Effort: Moderate (add compression, caching)
-Recommendation: Good ROI, still very cheap
+Infrastructure: Single region + d-solve.de nginx proxy
+Effort: Minimal (already have d-solve.de, add 3 nginx lines)
+Recommendation: This is the sweet spot! Zero extra infrastructure cost.
 ```
 
 ### Path 3: Large Scale (Enterprise)
@@ -422,9 +440,9 @@ Recommendation: Good ROI, still very cheap
 ```
 Traffic: 1,000-10,000+ users
 Cost: $16-500+ per week
-Infrastructure: Multi-region, load balancing, CDN
-Effort: Significant
-Recommendation: Consider charging users ($1 per valentine) to offset costs
+Infrastructure: Single region (us-central1), d-solve.de nginx reverse proxy
+Effort: Minimal (still just nginx, GCP scales Functions automatically)
+Recommendation: Still very cheap due to serverless. Charge users only if commercializing.
 ```
 
 ---
@@ -465,31 +483,33 @@ Covers all costs + profit
 
 ---
 
-## 🎯 Recommended Configuration
+## 🎯 Recommended Configuration (With d-solve.de Nginx)
 
 ### For This Project (Valentine Fun):
 
 ```
-Budget: $50/month (max safety limit)
+Budget: $50/month (max safety limit, should spend ~$3-5)
 Traffic target: 1,000 users max
 Duration: Feb 10-20 only
-Cost estimate: $2-8 for the week
+Cost estimate: $2-5 for the week
 
 Configuration:
 ✅ Single region (us-central1)
-✅ Scheduled enable/disable
+✅ Nginx reverse proxy on d-solve.de (existing server)
 ✅ Image compression enabled
-✅ CDN caching enabled
 ✅ 7-day TTL for auto-cleanup
 ✅ Rate limiting enabled
+✅ Scheduled enable/disable (optional, Cloud Functions already scale to zero)
 ❌ Multi-region (not needed)
-❌ Cloud Armor DDoS (overkill)
+❌ Cloud Load Balancer (using nginx instead, free)
+❌ Cloud Armor (overkill for a fun project)
 ❌ Backup replication (not needed)
 
 Expected costs if done well:
-- Week of Valentine: $5
-- Rest of year: $0 (disabled)
-- Annual: $5 + $6/month frontend = ~$80/year
+- Week of Valentine: $3-5 (Cloud Functions + storage only)
+- Rest of year: $0 (Cloud Functions idle cost = $0, storage minimal)
+- Annual: $5-10 total (just the Valentine week)
+- Nginx proxy: $0 (already have d-solve.de)
 ```
 
 ---

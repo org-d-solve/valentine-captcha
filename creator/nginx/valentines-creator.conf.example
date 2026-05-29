@@ -1,0 +1,101 @@
+# Nginx configuration for d-solve.de reverse proxy to VCaaS backend
+#
+# This proxies the Valentine Creator API through your existing d-solve.de domain,
+# so users see beautiful short links like:
+#   https://d-solve.de/v/aBcD3fGhIjKlMnOp
+#   https://d-solve.de/creator/
+#
+# Instead of long Cloud Functions URLs.
+#
+# Installation:
+#   1. Replace PROJECT_ID and REGION below with your actual values
+#   2. Copy this block into your d-solve.de nginx server config
+#   3. nginx -t && systemctl reload nginx
+#
+# Cost: $0 additional (uses your existing d-solve.de server)
+
+upstream valentines_api {
+    # Replace us-central1 with your GCP region
+    # Replace project-id-123 with your actual GCP project ID
+    server us-central1-project-id-123.cloudfunctions.net;
+}
+
+# Creator UI: serve the static frontend from Cloud Storage
+location /creator/ {
+    proxy_pass https://storage.googleapis.com/valentines-creator-prod/website/;
+    proxy_set_header Host storage.googleapis.com;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_ssl_verify off;
+    proxy_ssl_verify_depth 0;
+
+    # Cache static assets
+    expires 1h;
+    add_header Cache-Control "public, max-age=3600";
+}
+
+# Upload API endpoint: /api/v1/upload -> Cloud Functions
+location /api/v1/upload {
+    proxy_pass https://valentines_api/uploadImages;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_ssl_verify off;
+
+    # Allow large file uploads (90MB max)
+    client_max_body_size 100M;
+
+    # Increase timeout for file processing
+    proxy_connect_timeout 60s;
+    proxy_send_timeout 60s;
+    proxy_read_timeout 60s;
+}
+
+# URL resolver: /v/{shortId} -> Cloud Functions
+location ~ ^/v/([a-zA-Z0-9]+)$ {
+    proxy_pass https://valentines_api/resolveUrl?shortId=$1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_ssl_verify off;
+
+    # Follow redirects (the resolver returns 302 to the valentine page)
+    # Nginx won't follow by default, so the user's browser follows it
+}
+
+# Config endpoint: /api/v1/config/{configId} -> Cloud Functions
+location ~ ^/api/v1/config/(.+)$ {
+    proxy_pass https://valentines_api/getConfig?configId=$1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_ssl_verify off;
+}
+
+# CORS headers for API requests from the creator UI
+location /api/v1/ {
+    proxy_pass https://valentines_api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_ssl_verify off;
+
+    # Add CORS headers so the creator UI (on d-solve.de) can call the API
+    add_header 'Access-Control-Allow-Origin' 'https://d-solve.de' always;
+    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+    add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;
+
+    # Handle preflight requests
+    if ($request_method = 'OPTIONS') {
+        add_header 'Access-Control-Allow-Origin' 'https://d-solve.de' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;
+        add_header 'Content-Length' 0 always;
+        return 204;
+    }
+}

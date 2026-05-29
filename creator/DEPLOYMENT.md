@@ -1,8 +1,16 @@
-# Deployment Guide — Step by Step
+# Deployment Guide — Step by Step (d-solve.de + GCP)
 
-This is the **concrete, copy-paste** guide to get VCaaS running on GCP from a
-fresh machine. For the *why* behind each piece, see
-[ARCHITECTURE.md](./ARCHITECTURE.md); for money, see [COSTS.md](./COSTS.md).
+This is the **concrete, copy-paste** guide to get VCaaS running on GCP with your
+existing d-solve.de server as a reverse proxy. For the *why* behind each piece,
+see [ARCHITECTURE.md](./ARCHITECTURE.md); for money, see [COSTS.md](./COSTS.md).
+
+**Cost:** ~$3–5 for Valentine week, $0 the rest of the year.
+
+**Result:**
+- Creator UI: `https://d-solve.de/creator/`
+- Upload API: `https://d-solve.de/api/v1/upload`
+- Short links: `https://d-solve.de/v/{shortId}` (what your wife sees)
+- Valentine page: `https://d-solve.de/?to=Sarah&from=Alex&...`
 
 ---
 
@@ -82,43 +90,60 @@ Resolver:   https://<region>-<project>.cloudfunctions.net/resolveUrl
 
 ---
 
-## 5. Wire up the short domain (d-solve.de/v/...)
+## 5. Set up Nginx reverse proxy on d-solve.de
 
-The resolver function lives at a long Cloud Functions URL. To get pretty
-`https://d-solve.de/v/<shortId>` links, route that path to the resolver.
+SSH into your d-solve.de server and run the setup script:
 
-**Option A — Reverse proxy on your existing d-solve.de host (simplest):**
+```bash
+cd /path/to/your/d-solve.de/server
 
-```nginx
-# nginx on the server already hosting d-solve.de
-location /v/ {
-  # strip /v/ and forward the shortId to the resolver function
-  proxy_pass https://us-central1-valentines-creator-2026.cloudfunctions.net/resolveUrl/;
-  proxy_set_header Host $host;
-}
+# Download the Valentine Creator repo (or use your existing checkout)
+git clone https://github.com/org-d-solve/valentine-captcha.git
+cd valentine-captcha/creator
+
+# Run the nginx setup script (it does everything for you)
+./scripts/setup-nginx.sh valentines-creator-2026 us-central1
+# (replace project ID with your actual GCP project)
 ```
 
-**Option B — GCP HTTPS Load Balancer + Serverless NEG** (fully on GCP):
-See the commented Load Balancer steps in [README.md](./README.md#step-6).
+This script:
+1. Generates the nginx config (substituting your project ID + region)
+2. Copies it to `/etc/nginx/sites-available/`
+3. Enables it (symlink to `/etc/nginx/sites-enabled/`)
+4. Tests the config
+5. Reloads nginx
 
-Point `creator.d-solve.de` (a CNAME) at the frontend bucket via Cloud CDN or
-a load balancer the same way.
+**That's it!** Your d-solve.de now proxies to the GCP Cloud Functions.
+
+Verify:
+```bash
+curl https://d-solve.de/creator/
+# Should return the creator UI HTML
+```
 
 ---
 
-## 6. Set the frontend's API URL
+## 6. Build and deploy with d-solve.de API URL
 
-The frontend calls `VITE_API_URL` at build time. Set it before building (the
-deploy script picks it up from the environment):
+When building the frontend, tell it to use the d-solve.de proxy URL:
 
 ```bash
-export VITE_API_URL="https://us-central1-valentines-creator-2026.cloudfunctions.net"
-# Re-run the build/deploy so the bundle points at your live API
+export VITE_API_URL="https://d-solve.de/api/v1"
+cd creator/frontend && npm install && npm run build && cd ../..
+
+# Now upload to Cloud Storage
+gsutil -m cp -r frontend/dist/* gs://valentines-creator-prod/website/
+```
+
+Or use the automated deploy script with the env var set:
+
+```bash
+export VITE_API_URL="https://d-solve.de/api/v1"
 ./scripts/deploy.sh prod
 ```
 
-Or, if you use the proxy approach, set `VITE_API_URL="https://creator.d-solve.de/api/v1"`
-and proxy `/api/v1/*` to the functions.
+This embeds the d-solve.de URL into the frontend bundle so all API calls go
+through your nginx proxy.
 
 ---
 

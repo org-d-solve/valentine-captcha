@@ -302,13 +302,23 @@ Storage: gs://valentines-creator-staging
 
 ### Production (GCP):
 ```
-Frontend: Cloud Storage + Cloud CDN
-  https://creator.d-solve.de
+Frontend: Cloud Storage
+  https://storage.googleapis.com/valentines-creator-prod/website/
 
-Backend: Cloud Functions (multi-region with Load Balancer)
-  https://valentines-creator.d-solve.de/api
+Backend: Cloud Functions (us-central1, single region)
+  https://us-central1-project-id.cloudfunctions.net/...
 
-Firestore: GCP Firestore (multi-region)
+Reverse Proxy: Nginx on existing d-solve.de server
+  /api/v1/* → Cloud Functions
+  /v/* → Cloud Functions resolver
+
+Public URLs (via nginx):
+  Creator UI:    https://d-solve.de/creator/
+  Upload API:    https://d-solve.de/api/v1/upload
+  Short links:   https://d-solve.de/v/{shortId}
+  Valentine page: https://d-solve.de/?to=...&from=...
+
+Firestore: GCP Firestore (us-central1)
 
 Storage: gs://valentines-creator-prod
   with lifecycle policies for auto-deletion
