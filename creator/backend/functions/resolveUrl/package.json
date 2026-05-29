@@ -1,0 +1,13 @@
+{
+  "name": "resolve-url",
+  "version": "1.0.0",
+  "description": "Resolve short URLs to Valentine page",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.3.0",
+    "@google-cloud/firestore": "^6.4.0"
+  },
+  "engines": {
+    "node": "18"
+  }
+}
