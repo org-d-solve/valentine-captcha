@@ -2,82 +2,21 @@
 
 A faux-reCAPTCHA Valentine page. Recipients have to "verify they're human" by clicking a fake captcha, selecting all 9 squares (every single one secretly contains a heart), and dragging a slider all the way to "yes" — then they're told they're your valentine. The decline button skitters away when you try to click it.
 
-Built as static HTML + JS + CSS. **No build step, no backend required.** Drop it on any host.
+This page is already hosted at **[love.d-solve.de](https://love.d-solve.de)** — most people just need the first section below. If you want to run your own copy instead, skip to [For developers](#-for-developers--self-hosting-this-project).
 
 ---
 
-## 📁 File structure
+# ❤️ For users — sending a Valentine via love.d-solve.de
+
+You don't need to install or deploy anything. Just build a URL and send it.
+
+## The basics
 
 ```
-valentine/
-├── index.html          ← the page itself (links to everything else)
-├── styles.css          ← all styles
-├── config.js           ← ★ per-recipient settings (names, message, images)
-├── app.jsx             ← the app logic (don't edit)
-├── tweaks-panel.jsx    ← dev-only panel, harmless in prod (don't edit)
-├── favicon.svg         ← browser tab icon
-├── og-image.png        ← share preview (Slack/iMessage/Twitter), 1200×630
-└── README.md           ← this file
+https://love.d-solve.de/?to=Sarah&from=Alex&msg=Be%20mine%20pls
 ```
 
-All files live in the same folder. Relative paths in `index.html` resolve to siblings, so don't shuffle them around.
-
----
-
-## 🚀 Deploy
-
-It's static — anywhere that serves files will work.
-
-### One-click hosts
-
-- **[Netlify Drop](https://app.netlify.com/drop)** — drag the folder onto the page, done. You get a public URL in seconds.
-- **[Vercel](https://vercel.com/)** — `vercel deploy` from the folder, or drag-and-drop in their dashboard.
-- **[GitHub Pages](https://pages.github.com/)** — push the folder to a repo, enable Pages on the `main` branch.
-- **Cloudflare Pages**, **Surge**, **Render**, **Fly static** — same drill.
-
-### Your own server (nginx, Caddy, Apache, etc.)
-
-Just point a directory at the folder. Example nginx:
-
-```nginx
-server {
-  listen 80;
-  server_name valentine.example.com;
-  root /var/www/valentine;
-  index index.html;
-}
-```
-
-Make sure `.js` is served with `Content-Type: text/javascript` (most servers do this by default).
-
----
-
-## 👀 Preview locally
-
-Browsers block the in-browser Babel transform when you open `index.html` directly via `file://`. Run a one-liner static server from inside the folder:
-
-```bash
-# any of these work
-npx serve .
-python3 -m http.server 8000
-php -S localhost:8000
-```
-
-Then open `http://localhost:8000/?to=Sarah&from=Alex`.
-
----
-
-## 🎨 Personalising it
-
-You have three options. Pick the one that matches your effort budget.
-
-### Option 1 — URL parameters (zero setup, no backend)
-
-The simplest path. Just craft a URL and share it.
-
-```
-https://your-site.com/?to=Sarah&from=Alex&msg=Be%20mine%20pls
-```
+Open that in a browser (or send it to someone) and it just works.
 
 **Full parameter list:**
 
@@ -92,18 +31,124 @@ https://your-site.com/?to=Sarah&from=Alex&msg=Be%20mine%20pls
 
 **Encoding rules:** URL-encode spaces (`%20`), commas (`%2C`), `&`, `=`, etc. In JavaScript: `encodeURIComponent("Be mine!")`.
 
-**Combine freely:**
+## Adding your own pictures to the grid
+
+Each `img0` … `img8` parameter takes the URL of a picture for that grid cell (9 cells total, numbered left-to-right, top-to-bottom). Any image URL works — your own photos hosted somewhere, or a placeholder while you're testing.
+
+For example, using [dummyimage.com](https://dummyimage.com) as quick placeholder pictures:
 
 ```
-?to=Sarah&from=Alex
- &msg=The%20captcha%20agrees.%20There%20is%20no%20appeal.
- &img0=https://example.com/photos/us-1.jpg
- &img1=https://example.com/photos/us-2.jpg
- &prompt=our%20cat
- &cells=any
+img0 = https://dummyimage.com/600x400/000/fff&text=test-image-1
+img1 = https://dummyimage.com/600x400/000/fff&text=test-image-2
+img2 = https://dummyimage.com/600x400/000/fff&text=test-image-3
 ```
 
-(Newlines added for readability — real URLs have no whitespace.)
+…and so on for `img3` up to `img8` (just bump the number in `text=test-image-N`).
+
+**Important:** those placeholder URLs contain their own `&`, which would otherwise get parsed as the start of a new URL parameter. URL-encode the whole image URL before dropping it into the `love.d-solve.de` link — encode `://`, `/`, `&`, `=` as `%3A%2F%2F`, `%2F`, `%26`, `%3D` respectively.
+
+**Full worked example** — a Valentine for Sarah, from Alex, with three placeholder pictures and the rest falling back to the default heart:
+
+```
+https://love.d-solve.de/?to=Sarah&from=Alex&msg=Be%20mine%3F&img0=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-1&img1=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-2&img2=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-3
+```
+
+Paste that straight into a browser — it renders immediately, no setup needed. Swap `img0`/`img1`/`img2` for real photo URLs (imgur, your own site, Cloudinary, whatever) when you're ready to send the real thing. Cells left unset just show the built-in SVG heart, which already looks nice on its own.
+
+## 🖼️ Picture notes
+
+- **9 cells** in a 3×3 grid.
+- Images are **cropped square** (`object-fit: cover`) — aim for roughly square sources.
+- A cell you don't set falls back to the **built-in SVG heart** (still pretty, still on-brand).
+- **The joke** is that all 9 cells "contain a heart" so the recipient has to select all 9. If you swap in real photos, you can still keep `cells=all` — it works regardless of what the photos look like — or loosen it with `cells=any` or `cells=0,3,8`.
+
+## 🧪 Before you send it
+
+- [ ] Open the link yourself in an incognito window — check the name/message renders.
+- [ ] Click the "I'm not a robot" box → wait for the loader → see the image grid.
+- [ ] Select all 9 squares → "VERIFY" → slider appears.
+- [ ] Drag slider all the way → "CONFIRM" → reveal screen with the recipient's name.
+- [ ] Paste the link into Slack or iMessage to check the share preview looks right.
+- [ ] Try the "decline" button — it should skitter away.
+
+## 🩹 Troubleshooting
+
+**Images don't load**
+Open the image URL directly in your browser. If *that* fails, the URL is wrong or the host requires auth. If it loads on its own but not inside the page, your `&` probably wasn't URL-encoded (see above) and got cut off mid-link.
+
+**Share preview (Slack/iMessage/Twitter) won't update**
+Social platforms cache aggressively per-URL. Append a throwaway parameter like `&v=2` to force a fresh preview, or use the platform's own debugger:
+- Slack: paste the URL into a private chat, click "Re-fetch"
+- Twitter/X: [card validator](https://cards-dev.twitter.com/validator)
+- Facebook: [sharing debugger](https://developers.facebook.com/tools/debug/)
+
+**Captcha won't pass no matter what I click**
+You've set `cells` to a specific list but selected the wrong indices. Indices are 0-based, left-to-right, top-to-bottom: row 1 = `0,1,2`, row 2 = `3,4,5`, row 3 = `6,7,8`.
+
+---
+
+# 🛠 For developers — self-hosting this project
+
+Want to run your own copy instead of using `love.d-solve.de`? It's a static site — everything below assumes you're working from source.
+
+## 📁 File structure
+
+```
+valentine-captcha/
+├── index.html          ← the page itself (links to everything else)
+├── styles.css          ← all styles
+├── config.js           ← ★ per-recipient settings (names, message, images)
+├── app.jsx             ← the app logic (don't edit)
+├── tweaks-panel.jsx    ← dev-only panel, harmless in prod (don't edit)
+├── favicon.svg         ← browser tab icon
+├── og-image.png        ← share preview (Slack/iMessage/Twitter), 1200×630
+└── README.md           ← this file
+```
+
+All files live in the same folder. Relative paths in `index.html` resolve to siblings, so don't shuffle them around.
+
+## 🚀 Deploy
+
+Built as static HTML + JS + CSS. **No build step, no backend required.** Drop it on any host.
+
+### One-click hosts
+
+- **[Netlify Drop](https://app.netlify.com/drop)** — drag the folder onto the page, done. You get a public URL in seconds.
+- **[Vercel](https://vercel.com/)** — `vercel deploy` from the folder, or drag-and-drop in their dashboard.
+- **[GitHub Pages](https://pages.github.com/)** — push the folder to a repo, enable Pages on the `main` branch.
+- **Cloudflare Pages**, **Surge**, **Render**, **Fly static** — same drill.
+
+### Your own server (nginx, Caddy, Apache, etc.)
+
+Just point a directory at the folder. Example nginx, serving it under a custom subdomain the way `love.d-solve.de` does:
+
+```nginx
+server {
+  listen 80;
+  server_name love.example.com;
+  root /var/www/valentine-captcha;
+  index index.html;
+}
+```
+
+Make sure `.js` is served with `Content-Type: text/javascript` (most servers do this by default).
+
+## 👀 Preview locally
+
+Browsers block the in-browser Babel transform when you open `index.html` directly via `file://`. Run a one-liner static server from inside the folder:
+
+```bash
+# any of these work
+npx serve .
+python3 -m http.server 8000
+php -S localhost:8000
+```
+
+Then open `http://localhost:8000/?to=Sarah&from=Alex`.
+
+## 🎨 Personalising it
+
+The [user section above](#-for-users--sending-a-valentine-via-love-d-solve-de) covers URL parameters, which work on any deployment, not just `love.d-solve.de`. As a host you also get two more options:
 
 ### Option 2 — Edit `config.js` by hand
 
@@ -118,10 +163,10 @@ window.VALENTINE_CONFIG = {
   message: "The captcha agrees. There is no appeal.",
 
   images: [
-    "/photos/01.jpg",
-    "/photos/02.jpg",
+    "https://dummyimage.com/600x400/000/fff&text=test-image-1",
+    "https://dummyimage.com/600x400/000/fff&text=test-image-2",
     null,                  // null = use the cute default heart placeholder
-    "/photos/04.jpg",
+    "https://dummyimage.com/600x400/000/fff&text=test-image-4",
     null, null, null, null, null,
   ],
 
@@ -129,6 +174,8 @@ window.VALENTINE_CONFIG = {
   correctCells: "all",     // "all" | "any" | [0, 3, 8]
 };
 ```
+
+Unlike URL parameters, image URLs in `config.js` are plain JavaScript strings — no need to URL-encode the `&` in the `dummyimage.com` example URLs above.
 
 Then redeploy. Anything left empty (`""`) or `null` falls back to URL params or built-in defaults.
 
@@ -142,7 +189,7 @@ If you're sending valentines to many people from your own backend/database, rend
 
 ```js
 // Static valentine bundle:
-app.use('/v/:slug', express.static('valentine'));
+app.use('/v/:slug', express.static('valentine-captcha'));
 
 // …but config.js is dynamic per slug:
 app.get('/v/:slug/config.js', async (req, res) => {
@@ -165,8 +212,6 @@ Now each `/v/abc123/` URL pulls its own data with no rebuild. The browser fetche
 
 **Equivalents:** Next.js API route, FastAPI endpoint, PHP script, Cloudflare Worker, etc. — anything that can return JavaScript.
 
----
-
 ## 🖼️ Captcha images — practical notes
 
 - **9 cells** in a 3×3 grid.
@@ -178,8 +223,6 @@ Now each `/v/abc123/` URL pulls its own data with no rebuild. The browser fetche
   - Set `cells: "any"` to just accept any non-empty selection.
   - Set `cells: [0, 3, 8]` to require exact indices (useful if only some photos really do show the thing).
 - Cross-origin images: most hosts (S3, Cloudinary, imgur, your own server) work fine. If you see broken images, check the host's CORS headers — but since we use plain `<img>` tags (not canvas), CORS *usually* isn't required.
-
----
 
 ## 🪪 Favicon & share preview
 
@@ -198,28 +241,11 @@ The current image is generic ("You've received a Valentine"). Two ways to custom
 
 The `<meta>` tags also include `og:title`, `og:description`, and the Twitter equivalents. Edit them in `index.html` if you want to customise the share text.
 
----
-
 ## 🛠️ Tweaks panel
 
 There's a hidden dev panel on the page (toggled by a host environment). It does nothing in production — you can ignore it, or delete the line `<script type="text/babel" src="tweaks-panel.jsx"></script>` from `index.html` if you want to drop a file from the bundle.
 
----
-
-## 🧪 Testing checklist
-
-Before sending a URL out:
-
-- [ ] Open it in an incognito window — make sure the name/message renders.
-- [ ] Click the "I'm not a robot" box → wait for the loader → see the image grid.
-- [ ] Select all 9 squares → "VERIFY" → slider appears.
-- [ ] Drag slider all the way → "CONFIRM" → reveal screen with the recipient's name.
-- [ ] Paste the URL into Slack or iMessage to verify the OG preview renders.
-- [ ] Try the "decline" button — it should skitter away.
-
----
-
-## 🩹 Troubleshooting
+## 🩹 Troubleshooting (self-hosting)
 
 **Page is blank, console says "Uncaught SyntaxError" near a JSX file**
 You opened it from `file://`. Run a static server (see "Preview locally").
@@ -236,8 +262,6 @@ Social platforms cache aggressively. Use the platform's debugger to flush:
 
 **Captcha won't pass no matter what I click**
 You've set `correctCells` to a specific array but selected the wrong indices. Indices are 0-based, left-to-right, top-to-bottom: row 1 = `[0,1,2]`, row 2 = `[3,4,5]`, row 3 = `[6,7,8]`.
-
----
 
 ## 📜 License
 

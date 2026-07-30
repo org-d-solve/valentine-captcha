@@ -20,7 +20,9 @@ window.VALENTINE_CONFIG = {
   // -------- Captcha image grid (9 cells) --------
   //
   // Each entry is either:
-  //   - a URL/path to an image  (e.g. "/photos/us.jpg")
+  //   - a URL/path to an image  (e.g. "/photos/us.jpg", or a placeholder
+  //     like "https://dummyimage.com/600x400/000/fff&text=test-image-1"
+  //     while you're testing)
   //   - null  → uses the built-in cute SVG heart placeholder
   //
   // Use square or near-square images; they're cropped to fit.
