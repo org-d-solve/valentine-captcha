@@ -39,7 +39,8 @@ Open that in a browser (or send it to someone) and it just works.
 | `title` | Intro headline, printed after "*name*," | `?title=you've%20received%20*a%20Valentine.*` |
 | `subtitle` | Intro paragraph (the mock security notice) | `?subtitle=Verification%20required.` |
 | `prompt` | What the captcha asks the user to find | `?prompt=a%20red%20flag` |
-| `hint` | Second, smaller line of the challenge header | `?hint=Pick%20carefully.` |
+| `hint` | Second, smaller line of the challenge header — **always visible** | `?hint=Pick%20carefully.` |
+| `help` | Message shown only when the recipient clicks the **?** button | `?help=Only%20our%20holiday%20photos.` |
 | `cells` | Which squares must be selected to pass | `?cells=all` · `?cells=any` · `?cells=1,2,5` |
 | `img1` … `img9` | Picture URL for each square (1 = top-left, 9 = bottom-right) | `?img1=https://i.imgur.com/abc.jpg` |
 | `question` | The headline above the slider | `?question=Really%2C%20*yes%20or%20no*%3F` |
@@ -48,7 +49,9 @@ Open that in a browser (or send it to someone) and it just works.
 | `reveal` | Final headline, printed after "*name*," | `?reveal=you%20are%20my%20valentine.` |
 | `msg` | Message under the final headline | `?msg=Be%20mine` |
 
-**Formatting inside any wording field:** wrap a phrase in `*asterisks*` to render it in the italic accent colour, and use `\n` to force a line break. (Plain text only — HTML is never interpreted.)
+**Two different hints.** `hint` is the small line printed under "Select all squares with …" and is on screen the whole time. `help` is what pops up when the recipient presses the **?** button. They're separate on purpose — set one, the other, or neither. If you leave `help` empty, the default describes the challenge you actually configured (with `cells=1,2,5` it says exactly 3 squares count; with `cells=all` it says every square qualifies), so it isn't the same sentence every time.
+
+**Formatting** works in `title`, `subtitle`, `hint`, `question` and `reveal`: wrap a phrase in `*asterisks*` to render it in the italic accent colour, and use `\n` to force a line break. Plain text only — HTML is never interpreted. The remaining fields (`to`, `from`, `prompt`, `help`, `scale`, `readouts`, `msg`) are taken literally.
 
 **Encoding rules:** URL-encode spaces (`%20`), commas (`%2C`), `&`, `=`, etc. In JavaScript: `encodeURIComponent("Be mine!")`.
 
@@ -152,7 +155,10 @@ Social platforms cache aggressively per-URL. Append a throwaway parameter like `
 You've set `cells` to a specific list and are selecting the wrong squares. Squares count **1–9**, left-to-right and top-to-bottom: row 1 = `1,2,3`, row 2 = `4,5,6`, row 3 = `7,8,9`. You have to select *exactly* the listed squares — no more, no fewer. Numbers outside 1–9 are ignored, and if none of them are valid the challenge silently falls back to `all` (select all 9).
 
 **A wording field shows literal `*asterisks*` or `\n`**
-Those only work in the wording parameters (`title`, `subtitle`, `hint`, `question`, `reveal`) — not in `to`, `from`, `prompt`, `scale` or `readouts`.
+Formatting only applies to `title`, `subtitle`, `hint`, `question` and `reveal`. Everything else — including `help`, `prompt`, `scale` and `readouts` — is printed exactly as typed.
+
+**My custom hint isn't the one I expected to see**
+There are two: `hint` sits in the challenge header permanently, `help` only appears after pressing **?**. Setting one leaves the other at its default.
 
 ---
 
@@ -249,7 +255,8 @@ window.VALENTINE_CONFIG = {
   // Wording — all optional, empty falls back to the built-in text
   title:    "you've received *a Valentine.*",
   subtitle: "",
-  hint:     "If there are none, click verify.",
+  hint:     "If there are none, click verify.",   // always visible
+  help:     "",                                   // only on the "?" button
   question: "On a scale of *0 to yes*,\nwill you be mine?",
   reveal:   "you are my valentine.",
   scale:    ["NO", "MEH", "OK", "SURE", "YES"],

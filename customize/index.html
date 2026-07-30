@@ -287,9 +287,14 @@
               <small class="hint">Fills in "Select all squares with ___". Default: a heart</small>
             </div>
             <div class="field">
-              <label for="hint">Hint line</label>
+              <label for="hint">Hint line — always visible</label>
               <input type="text" id="hint" name="hint" placeholder="If there are none, click verify." />
-              <small class="hint">The smaller second line in the challenge header.</small>
+              <small class="hint">The smaller second line printed in the challenge header, right after "what to find".</small>
+            </div>
+            <div class="field">
+              <label for="help">Help text — shown on "?"</label>
+              <input type="text" id="help" name="help" placeholder="Hint: every single one is a heart." />
+              <small class="hint">Appears only when the recipient clicks the ? button. Left empty, it describes the challenge you set (e.g. how many squares count).</small>
             </div>
             <div class="cells-row">
               <div class="field">
@@ -390,6 +395,7 @@
           <div class="link-row">
             <input type="text" id="output-url" readonly />
             <button type="button" class="btn btn-primary" id="copy-btn">Copy</button>
+            <button type="button" class="btn btn-secondary" id="open-btn">Open ↗</button>
           </div>
         </div>
 
@@ -417,13 +423,14 @@
     const form = document.getElementById('builder');
     const outputUrl = document.getElementById('output-url');
     const copyBtn = document.getElementById('copy-btn');
+    const openBtn = document.getElementById('open-btn');
     const previewBtn = document.getElementById('preview-btn');
     const previewFrame = document.getElementById('preview-frame');
 
     // Text params, in the order they should appear in the built URL.
     const TEXT_PARAMS = [
       'to', 'from', 'title', 'subtitle',
-      'prompt', 'hint', 'cells',
+      'prompt', 'hint', 'help', 'cells',
       'question', 'scale', 'readouts',
       'reveal', 'msg',
     ];
@@ -476,6 +483,10 @@
         copyBtn.textContent = 'Copied!';
       }
       setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+    });
+
+    openBtn.addEventListener('click', () => {
+      window.open(outputUrl.value, '_blank', 'noopener');
     });
 
     previewBtn.addEventListener('click', () => {

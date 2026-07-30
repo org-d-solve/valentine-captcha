@@ -77,7 +77,8 @@ const STRINGS = {
     reloadAll: (prompt) => `Refreshing didn't help. They're still all ${prompt}.`,
     reloadOther: "Refreshing didn't help. Same challenge.",
     helpAll: (prompt) => `Hint: every single one is ${prompt}.`,
-    helpOther: "Hint: look carefully.",
+    helpSpecific: (n) => `Hint: exactly ${n} of the nine squares count. Pick only those.`,
+    helpAny: "Hint: pick at least one — any of them will do.",
     verifyBtn: "VERIFY",
     titleReload: "Get a new challenge",
     titleHelp: "Help",
@@ -142,7 +143,8 @@ const STRINGS = {
     reloadAll: (prompt) => `Neu laden hat nicht geholfen. Auf allen ist weiterhin ${prompt}.`,
     reloadOther: "Neu laden hat nicht geholfen. Gleiche Aufgabe.",
     helpAll: (prompt) => `Tipp: auf jedem einzelnen ist ${prompt}.`,
-    helpOther: "Tipp: schau genau hin.",
+    helpSpecific: (n) => `Tipp: genau ${n} der neun Felder zählen. Wähle nur diese aus.`,
+    helpAny: "Tipp: wähle mindestens eins — es zählt jedes.",
     verifyBtn: "BESTÄTIGEN",
     titleReload: "Neue Aufgabe laden",
     titleHelp: "Hilfe",
@@ -181,7 +183,8 @@ function pick(param, cfgKey) {
 const CFG_TITLE     = pick("title", "title");
 const CFG_SUBTITLE  = pick("subtitle", "subtitle");
 const CFG_PROMPT    = pick("prompt", "challengePrompt") || L.promptDefault;
-const CFG_HINT      = pick("hint", "hint") || L.hint;
+const CFG_HINT      = pick("hint", "hint") || L.hint;   // always-visible header line
+const CFG_HELP      = pick("help", "help");             // shown by the "?" button
 const CFG_QUESTION  = pick("question", "question");
 const CFG_REVEAL    = pick("reveal", "reveal");
 const CFG_SCALE     = parseList(getParam("scale", "")) || parseList(CFG.scale) || L.scale;
@@ -444,6 +447,15 @@ function App() {
     setGridError(correctMode === "all" ? L.reloadAll(CFG_PROMPT) : L.reloadOther);
   }
 
+  // The "?" button. A custom `help` text wins; otherwise the default actually
+  // reflects the challenge instead of being the same line every time.
+  function showHelp() {
+    if (CFG_HELP) { setGridError(CFG_HELP); return; }
+    if (correctMode === "all")      setGridError(L.helpAll(CFG_PROMPT));
+    else if (correctMode === "any") setGridError(L.helpAny);
+    else                            setGridError(L.helpSpecific(correctSet.size));
+  }
+
   // slider challenge state
   const [sliderVal, setSliderVal] = useState(0);
   const sliderLabel = useMemo(
@@ -503,7 +515,7 @@ function App() {
           <h1 className="eyebrow">{L.deliveredTo}</h1>
           <h2 className="title">{toName},<br/><RichText text={CFG_TITLE || L.title} /></h2>
           <p className="subtitle">
-            {CFG_SUBTITLE || L.subtitle(toName, hasTo)}
+            <RichText text={CFG_SUBTITLE || L.subtitle(toName, hasTo)} />
           </p>
 
           <div className="captcha-widget">
@@ -557,7 +569,7 @@ function App() {
           <div className="challenge">
             <div className="challenge-header">
               <strong>{L.selectAllWith}</strong>
-              <span className="hint"><Heart size={12} fill="#fff" style={{display:"inline",verticalAlign:"-2px",marginRight:4}}/>{CFG_PROMPT}. {CFG_HINT}</span>
+              <span className="hint"><Heart size={12} fill="#fff" style={{display:"inline",verticalAlign:"-2px",marginRight:4}}/>{CFG_PROMPT}. <RichText text={CFG_HINT} /></span>
             </div>
             <div className="grid">
               {cells.map((src, i) => (
@@ -573,7 +585,7 @@ function App() {
             <div className="challenge-foot">
               <div style={{display:"flex",gap:4}}>
                 <button className="icon-btn" onClick={reloadGrid} title={L.titleReload}>↻</button>
-                <button className="icon-btn" title={L.titleHelp} onClick={()=>setGridError(correctMode === "all" ? L.helpAll(CFG_PROMPT) : L.helpOther)}>?</button>
+                <button className="icon-btn" title={L.titleHelp} onClick={showHelp}>?</button>
               </div>
               <button className="verify-btn" onClick={verifyGrid}>{L.verifyBtn}</button>
             </div>

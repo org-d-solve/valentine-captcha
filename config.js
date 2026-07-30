@@ -67,7 +67,8 @@ window.VALENTINE_CONFIG = {
   //
   title:    "",   // intro headline, shown after "<name>,"
   subtitle: "",   // intro paragraph under the headline
-  hint:     "",   // second line of the captcha challenge header
+  hint:     "",   // second line of the captcha challenge header (always visible)
+  help:     "",   // message shown when the recipient clicks the "?" button
   question: "",   // the slider headline, e.g. "On a scale of *0 to yes*,\nwill you?"
   reveal:   "",   // final headline, shown after "<name>," — e.g. "you are my valentine."
 
