@@ -272,6 +272,19 @@
   .import-status.is-ok { color: var(--green); }
   .import-status.is-error { color: var(--red-deep); }
 
+  .drive-note {
+    margin: 8px 0 0;
+    padding: 8px 10px;
+    border: 1px solid var(--line-2);
+    border-left: 3px solid var(--green);
+    border-radius: 6px;
+    background: var(--paper);
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+  .drive-note[hidden] { display: none; }
+
   .img-help {
     margin-top: 12px;
     padding: 12px 14px;
@@ -496,13 +509,14 @@
                 <input type="text" id="img9" name="img9" placeholder="https://dummyimage.com/600x400/000/fff&text=test-image-9" />
               </div>
             </div>
-            <small class="hint" style="margin-top:10px;display:block;">Leave a square empty to keep its built-in heart placeholder. The dummyimage.com links are just quick stand-ins for testing.</small>
+            <small class="hint" style="margin-top:10px;display:block;">Leave a square empty to keep its built-in heart placeholder. The dummyimage.com links are just quick stand-ins for testing. Google Drive share links can be pasted as they are — they get converted automatically.</small>
+            <p class="drive-note" id="drive-note" role="status" aria-live="polite" hidden></p>
 
             <div class="img-help">
               <p><strong>Where do I get a link for my own photo?</strong> A photo on your phone or laptop has no URL, so it has to go somewhere public first. Whatever you use, the link must point <em>straight at the image file</em> and start with <code>https://</code> — paste it into a private/incognito window, and if you see the bare picture and nothing else, it will work here.</p>
               <ul>
                 <li><strong>Wikipedia / Wikimedia Commons</strong> — open the picture, right-click it and choose <em>Copy image address</em>. You get an <code>upload.wikimedia.org/…</code> link, which is free, permanent and the most reliable option.</li>
-                <li><strong>Google Drive</strong> — upload the photo, then <em>Share → Anyone with the link</em>. The copied link (<code>drive.google.com/file/d/<b>FILE_ID</b>/view…</code>) is a preview page, not the image; take the ID out of the middle and paste <code>https://drive.google.com/uc?export=view&amp;id=<b>FILE_ID</b></code> instead. Leaving it on "Restricted" gives the recipient a login screen.</li>
+                <li><strong>Google Drive — supported natively, just paste the share link.</strong> Upload the photo, set <em>Share → General access → Anyone with the link</em>, copy the link and drop it into a square exactly as Google gives it to you. This page recognises it and rewrites it into a direct image link for you. The one thing you have to get right is the sharing setting: on "Restricted" the recipient sees a login screen instead of your photo.</li>
                 <li><strong>Your own website, or any image host</strong> — Imgur (use the <code>i.imgur.com/…</code> address), GitHub's <em>Raw</em> button, S3, Cloudinary. Or drag a folder of photos onto <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer">Netlify Drop</a> for instant public URLs, no account needed.</li>
                 <li><strong>No hosting at all</strong> — a picture can travel <em>inside</em> the link as a <code>data:</code> URI. Nothing gets uploaded anywhere, nothing can expire or be taken down, and nobody but the recipient ever sees it. The cost is length: each picture adds thousands of characters to the finished link, and very long links get mangled by some chat apps. Keep the images small, and don't do it for all nine squares.
                   <details>
@@ -613,6 +627,37 @@
     const defaultBase = new URL('../', window.location.href).href;
     form.baseUrl.value = defaultBase;
 
+    /* ---- Google Drive links -------------------------------------------
+       A Drive share link points at a preview *page*, not at the image, and
+       Drive's own uc?export=view endpoint answers with
+       "cross-origin-resource-policy: same-site" — which a browser refuses to
+       render inside another site, so the square just stays blank. The
+       thumbnail endpoint serves the same file without that header, so any
+       Drive link the visitor pastes gets rewritten to it on the way out. */
+    const DRIVE_THUMB_SIZE = 'w1000';
+
+    // Returns the Drive file ID if this value is a Drive link that still
+    // needs converting, otherwise null.
+    function driveFileId(rawValue) {
+      const value = String(rawValue || '').trim();
+      if (!/^https?:\/\/(drive|docs)\.google\.com\//i.test(value)) return null;
+      if (/\/thumbnail\?/i.test(value)) return null;   // already converted
+
+      const fromPath = value.match(/\/(?:file|d)\/d?\/?([A-Za-z0-9_-]{10,})/) ||
+                       value.match(/\/file\/d\/([A-Za-z0-9_-]{10,})/);
+      if (fromPath) return fromPath[1];
+
+      const fromQuery = value.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
+      return fromQuery ? fromQuery[1] : null;
+    }
+
+    function normalizeImageUrl(rawValue) {
+      const id = driveFileId(rawValue);
+      return id
+        ? 'https://drive.google.com/thumbnail?id=' + id + '&sz=' + DRIVE_THUMB_SIZE
+        : String(rawValue || '').trim();
+    }
+
     function buildUrl() {
       const base = form.baseUrl.value.trim() || defaultBase;
       let u;
@@ -629,16 +674,40 @@
       };
 
       // English is the page default, so only pin the language when it differs.
-      if (form.lang.value !== 'en') u.searchParams.set('lang', form.lang.value);
+      if (form.lang.value && form.lang.value !== 'en') u.searchParams.set('lang', form.lang.value);
 
       TEXT_PARAMS.forEach(key => setIfFilled(key, form[key].value));
-      for (let i = 1; i <= 9; i++) setIfFilled('img' + i, form['img' + i].value);
+      for (let i = 1; i <= 9; i++) setIfFilled('img' + i, normalizeImageUrl(form['img' + i].value));
 
       return u.toString();
     }
 
+    // Say so when a Drive link was rewritten — the box still shows what the
+    // visitor pasted, so without this the finished link looks unexpected.
+    const driveNote = document.getElementById('drive-note');
+
+    function updateDriveNote() {
+      const squares = [];
+      for (let i = 1; i <= 9; i++) {
+        if (driveFileId(form['img' + i].value)) squares.push(i);
+      }
+
+      driveNote.hidden = squares.length === 0;
+      if (!squares.length) return;
+
+      const list = squares.length === 1
+        ? String(squares[0])
+        : squares.slice(0, -1).join(', ') + ' and ' + squares[squares.length - 1];
+
+      driveNote.textContent = 'Google Drive link detected in ' +
+        (squares.length === 1 ? 'square ' : 'squares ') + list +
+        ' — converted to a direct image link in the finished URL. ' +
+        'Make sure the file is shared with "Anyone with the link".';
+    }
+
     function refresh() {
       outputUrl.value = buildUrl();
+      updateDriveNote();
     }
 
     form.addEventListener('input', refresh);

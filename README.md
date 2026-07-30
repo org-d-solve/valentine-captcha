@@ -114,6 +114,10 @@ Three rules decide whether a square shows up at all:
 - **`https://`, never `http://`.** The page is served over HTTPS, and browsers silently block plain-`http` images inside it.
 - **Building the link by hand adds one more:** an image URL containing its own `&` or `=` must be URL-encoded first ([see above](#adding-your-own-pictures-to-the-grid)), or it gets cut off mid-link. The customize page does that for you.
 
+**Google Drive is handled natively.** Paste a share link into any square on the customize page exactly as Google gives it to you (`drive.google.com/file/d/FILE_ID/view?usp=sharing`) — the page recognises it, pulls the file ID out and writes `https://drive.google.com/thumbnail?id=FILE_ID&sz=w1000` into the finished link instead. It also fixes up the `open?id=` and `uc?export=view` forms. All the recipient needs is that the file is shared with **"Anyone with the link"**.
+
+That detour is necessary, not cosmetic: Drive's `uc?export=view` endpoint answers with `cross-origin-resource-policy: same-site`, so a browser refuses to render it inside another site. The link looks perfect when you open it in a tab and still leaves a blank square in the grid — which is exactly what makes it worth automating. If you're writing the URL by hand, use the `thumbnail?id=…` form yourself.
+
 ### Or skip hosting entirely: put the picture *inside* the link
 
 An image can be embedded directly in the URL as a `data:` URI, which is what several squares of the [demo][demo] do. Nothing is hosted anywhere, nothing can expire or go offline, and nothing is uploaded to a third party — the picture travels inside the link itself.
