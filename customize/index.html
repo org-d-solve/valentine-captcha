@@ -300,6 +300,27 @@
   }
   .img-help code b { font-weight: 600; color: var(--red-deep); }
   .img-help a { color: var(--red-deep); }
+  .img-help details {
+    margin-top: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    background: var(--paper);
+  }
+  .img-help summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .img-help details ol {
+    margin: 8px 0 0;
+    padding-left: 18px;
+  }
+  .img-help details ol li { margin-bottom: 7px; }
+  .img-help details p {
+    margin-top: 8px;
+    color: var(--ink-3);
+  }
   .img-help .img-help-foot {
     margin-top: 10px;
     padding-top: 9px;
@@ -482,9 +503,23 @@
               <ul>
                 <li><strong>Wikipedia / Wikimedia Commons</strong> — open the picture, right-click it and choose <em>Copy image address</em>. You get an <code>upload.wikimedia.org/…</code> link, which is free, permanent and the most reliable option.</li>
                 <li><strong>Google Drive</strong> — upload the photo, then <em>Share → Anyone with the link</em>. The copied link (<code>drive.google.com/file/d/<b>FILE_ID</b>/view…</code>) is a preview page, not the image; take the ID out of the middle and paste <code>https://drive.google.com/uc?export=view&amp;id=<b>FILE_ID</b></code> instead. Leaving it on "Restricted" gives the recipient a login screen.</li>
-                <li><strong>Dropbox</strong> — copy the share link and change the <code>?dl=0</code> at the end to <code>?raw=1</code>.</li>
                 <li><strong>Your own website, or any image host</strong> — Imgur (use the <code>i.imgur.com/…</code> address), GitHub's <em>Raw</em> button, S3, Cloudinary. Or drag a folder of photos onto <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer">Netlify Drop</a> for instant public URLs, no account needed.</li>
-                <li><strong>No hosting at all</strong> — you can paste a <code>data:image/webp;base64,…</code> URI straight into a box and the picture travels inside the link. Keep the 1small: each one makes the finished link thousands of characters longer, and very long links get mangled by some chat apps.</li>
+                <li><strong>No hosting at all</strong> — a picture can travel <em>inside</em> the link as a <code>data:</code> URI. Nothing gets uploaded anywhere, nothing can expire or be taken down, and nobody but the recipient ever sees it. The cost is length: each picture adds thousands of characters to the finished link, and very long links get mangled by some chat apps. Keep the images small, and don't do it for all nine squares.
+                  <details>
+                    <summary>How to turn a photo into a <code>data:</code> URI</summary>
+                    <ol>
+                      <li><strong>Shrink it first.</strong> A square is shown at roughly 200&times;200 pixels, so scale the photo to about 400&times;400 and save it as WebP or JPEG at moderate quality. A 3 MB phone photo would add roughly 4 million characters to the link; a 20 KB thumbnail adds about 27 000.</li>
+                      <li><strong>Convert it on your own machine.</strong> On macOS or Linux:
+                        <br><code>base64 -w0 photo.webp</code>
+                        <br>On Windows (PowerShell):
+                        <br><code>[Convert]::ToBase64String((Get-Content photo.webp -AsByteStream))</code>
+                      </li>
+                      <li><strong>Put the prefix in front</strong> of what you got: <code>data:image/webp;base64,</code> — or <code>data:image/jpeg;base64,</code> for a JPEG, <code>data:image/png;base64,</code> for a PNG. The prefix has to match the actual file type.</li>
+                      <li><strong>Paste the whole string</strong> (prefix + the long block of letters, no spaces or line breaks) into the square's box above. This page URL-encodes it for you.</li>
+                    </ol>
+                    <p>Online base64 converters work too, but most of them upload your photo to their server first — which defeats the point. Use one only if it states that it converts in your browser, or stick to the commands above.</p>
+                  </details>
+                </li>
               </ul>
               <p class="img-help-foot">Google Photos and iCloud share links are album <em>pages</em>, not files, and won't work. Squares are shown at roughly 200&times;200 pixels and cropped to a square, so small, roughly square pictures look best. Shrinking a photo down before turning it into a <code>data:</code> URI is covered in the <a href="https://github.com/org-d-solve/valentine-captcha#-where-to-get-a-public-image-link" target="_blank" rel="noopener noreferrer">documentation</a>.</p>
             </div>
