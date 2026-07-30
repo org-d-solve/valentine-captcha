@@ -31,6 +31,8 @@ Open that in a browser (or send it to someone) and it just works.
 
 **Encoding rules:** URL-encode spaces (`%20`), commas (`%2C`), `&`, `=`, etc. In JavaScript: `encodeURIComponent("Be mine!")`.
 
+Don't want to encode it by hand? Paste the raw value into an online encoder like **[urlencoder.org](https://www.urlencoder.org/)**, copy the encoded result, and drop that into the parameter instead.
+
 ## Adding your own pictures to the grid
 
 Each `img0` … `img8` parameter takes the URL of a picture for that grid cell (9 cells total, numbered left-to-right, top-to-bottom). Any image URL works — your own photos hosted somewhere, or a placeholder while you're testing.
@@ -54,6 +56,29 @@ https://love.d-solve.de/?to=Sarah&from=Alex&msg=Be%20mine%3F&img0=https%3A%2F%2F
 ```
 
 Paste that straight into a browser — it renders immediately, no setup needed. Swap `img0`/`img1`/`img2` for real photo URLs (imgur, your own site, Cloudinary, whatever) when you're ready to send the real thing. Cells left unset just show the built-in SVG heart, which already looks nice on its own.
+
+## Every parameter in one URL
+
+Here's every parameter set at once — recipient, sender, message, challenge prompt, which cells must be selected, and all nine grid pictures:
+
+**Plain values (before encoding):**
+
+| Param | Value |
+|---|---|
+| `to` | `Sarah` |
+| `from` | `Alex` |
+| `msg` | `Be mine forever?` |
+| `prompt` | `a shared memory` |
+| `cells` | `1,3,5` (only cells at index 1, 3 and 5 must be selected to pass — see [picture notes](#-picture-notes) for how indices map to the grid) |
+| `img0` … `img8` | `https://dummyimage.com/600x400/000/fff&text=test-image-1` … `test-image-9`, one per cell |
+
+**As one link** (values URL-encoded — spaces to `%20`, `?` to `%3F`, commas to `%2C`, and each image URL's own `://`, `/`, `&`, `=` to `%3A%2F%2F`, `%2F`, `%26`, `%3D`):
+
+```
+https://love.d-solve.de/?to=Sarah&from=Alex&msg=Be%20mine%20forever%3F&prompt=a%20shared%20memory&cells=1%2C3%2C5&img0=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-1&img1=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-2&img2=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-3&img3=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-4&img4=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-5&img5=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-6&img6=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-7&img7=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-8&img8=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-9
+```
+
+Paste that in as-is — every cell shows its own placeholder picture (`test-image-1` through `test-image-9`, left-to-right top-to-bottom), the challenge reads "Select all squares with a shared memory", and only cells 1, 3 and 5 need to be selected to pass. Swap the `cells` list, prompt, names and image URLs for your own — everything else in this example is just filled in for illustration.
 
 ## 🖼️ Picture notes
 
