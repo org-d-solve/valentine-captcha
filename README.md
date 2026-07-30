@@ -210,18 +210,65 @@ server {
 
 Make sure `.js` is served with `Content-Type: text/javascript` (most servers do this by default).
 
-## 👀 Preview locally
+## 👀 Test it locally
 
-Browsers block the in-browser Babel transform when you open `index.html` directly via `file://`. Run a one-liner static server from inside the folder:
+### 1. Start a static server
+
+**You cannot just double-click `index.html`** — browsers block the in-browser Babel transform over `file://` and you'll get a blank page. Serve the folder over HTTP instead. From inside the project folder:
 
 ```bash
-# any of these work
-npx serve .
-python3 -m http.server 8000
-php -S localhost:8000
+python3 -m http.server 8000     # or: npx serve .   /   php -S localhost:8000
 ```
 
-Then open `http://localhost:8000/?to=Sarah&from=Alex`.
+Leave it running. Stop it with `Ctrl+C` when you're done.
+
+### 2. Open the two pages
+
+| URL | What you should see |
+|---|---|
+| <http://localhost:8000/> | The Valentine page itself, English defaults |
+| <http://localhost:8000/customize/> | The link builder form |
+
+The customize page derives its base URL from wherever it's served, so on localhost it builds `http://localhost:8000/?…` links — its **Open ↗** button and preview frame test your local copy, not the live site.
+
+### 3. Smoke-test checklist
+
+Fastest path: open `/customize/`, fill a few fields, hit **Open ↗**. To test a specific thing directly, these URLs each isolate one feature:
+
+```bash
+# names on the intro + reveal screen
+http://localhost:8000/?to=Sarah&from=Alex
+
+# everything in German
+http://localhost:8000/?lang=de
+
+# specific squares: you must select squares 1, 2 and 5 — nothing else — to pass
+http://localhost:8000/?cells=1,2,5
+
+# the two hints are independent: one is always visible, one is behind "?"
+http://localhost:8000/?cells=1,2,5&hint=Only%20the%20top%20row.&help=Just%20our%20trip%20photos.
+
+# your own pictures in the grid
+http://localhost:8000/?img1=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-1
+```
+
+Then walk the flow and check:
+
+- [ ] **Footer** — "powered by d-solve.de" is visible without scrolling, right under the card.
+- [ ] Click "I'm not a robot" → loader cycles diagnostics → the image grid appears.
+- [ ] **The challenge is passable.** With `cells=all` select all 9; with `cells=1,2,5` select exactly squares 1, 2 and 5 ([numbering](#which-squares-are-which)) → "VERIFY" advances to the slider.
+- [ ] Press **?** — the message reflects the challenge you configured (or your `help` text), and differs from the always-visible `hint` line.
+- [ ] Drag the slider fully right → "CONFIRM" → reveal screen with the recipient's name and confetti.
+- [ ] Hover "decline" a few times — it dodges, then gives up.
+- [ ] With `?lang=de`, every button, error and loading message is German — and the browser tab title too.
+
+### 4. If the page is blank
+
+Open the browser console (F12). A `SyntaxError` pointing at a `.jsx` file means the JSX didn't compile; anything about `file://` means you skipped step 1. To check the JSX compiles without a browser at all:
+
+```bash
+npx esbuild app.jsx --loader:.jsx=jsx --outfile=/dev/null
+```
 
 ## 🎨 Personalising it
 
