@@ -17,12 +17,181 @@ function getParam(name, fallback) {
 
 const CFG = (typeof window !== "undefined" && window.VALENTINE_CONFIG) || {};
 
-// URL-param image overrides: ?img0=...&img1=...  (0–8)
+// Comma-separated list param → array of trimmed strings (null if empty).
+function parseList(raw) {
+  if (!raw) return null;
+  const parts = (Array.isArray(raw) ? raw : String(raw).split(","))
+    .map(s => String(s).trim())
+    .filter(Boolean);
+  return parts.length ? parts : null;
+}
+
+/* ---------------- language ---------------- */
+// ?lang=de | en   (config.js `language` is the fallback; English is the default)
+const LANG = (() => {
+  const raw = String(getParam("lang", "") || CFG.language || "en").toLowerCase().slice(0, 2);
+  return raw === "de" ? "de" : "en";
+})();
+
+const STRINGS = {
+  en: {
+    pageTitle: "You've received a Valentine",
+    metaSecure: "SECURE TRANSMISSION",
+    stages: ["01 / VERIFICATION", "02 / IMAGE CHALLENGE", "03 / FINAL CONFIRMATION", "04 / VERIFIED"],
+    defaultTo: "You",
+    defaultFrom: "Your Secret Admirer",
+    promptDefault: "a heart",
+
+    stamp: "Priority · 1ST class",
+    deliveredTo: "Hand-Delivered To",
+    title: "you've received *a Valentine.*",
+    subtitle: (toName, hasName) =>
+      `For security reasons, please verify you are a real human${hasName ? ` and that you are, in fact, ${toName}` : ""}. Bots have been receiving entirely too many valentines this year.`,
+    notRobot: "I'm not a robot",
+    verifiedHuman: "Verified. You seem human enough.",
+    captchaTerms: "Privacy · Terms",
+    diagnostics: [
+      "Analyzing your heart rate…",
+      "Cross-referencing with my diary…",
+      "Checking for red flags…",
+      "Looking for someone better… none found.",
+      "Asking your mom for permission…",
+      "Verifying you're not my ex…",
+      "Re-reading your texts from 2021…",
+      "Calculating compatibility (suspiciously high)…",
+    ],
+    passPreparing: "✓ pass. preparing challenge…",
+    fromLabel: (from) => `From ${from}`,
+    declineLabels: ["decline", "no really, decline", "fine, decline"],
+    declineQuit: "decline button quit",
+
+    selectAllWith: "Select all squares with",
+    hint: "If there are none, click verify.",
+    errNoneSelected: (prompt) => `Please select all images containing ${prompt}.`,
+    errAll: [
+      (n) => `Almost — you missed ${n}. Look closer.`,
+      (n, prompt) => `Still ${n} more. They all have ${prompt}. Trust me, I checked.`,
+      (n) => `${n} unselected. This is starting to feel personal.`,
+    ],
+    errSpecific: ["Not quite — try again.", "Still wrong. Look closer.", "This is starting to feel personal."],
+    reloadAll: (prompt) => `Refreshing didn't help. They're still all ${prompt}.`,
+    reloadOther: "Refreshing didn't help. Same challenge.",
+    helpAll: (prompt) => `Hint: every single one is ${prompt}.`,
+    helpOther: "Hint: look carefully.",
+    verifyBtn: "VERIFY",
+    titleReload: "Get a new challenge",
+    titleHelp: "Help",
+    gridFoot: "This step protects against bots *and* people with worse taste.",
+
+    finalConfirmation: "Final Confirmation",
+    question: (from, hasFrom) =>
+      `On a scale of *0 to yes*,\nwill you be ${hasFrom ? `${from}'s` : "my"} valentine?`,
+    scale: ["NO", "MEH", "OK", "SURE", "YES"],
+    readouts: ["absolutely not", "hmm.", "i guess.", "fine, yes.", "yes, obviously.", "yes, a thousand times."],
+    reconsider: "← reconsider",
+    slideAll: (pct) => `slide all the way (${pct}%)`,
+    confirmBtn: "CONFIRM ✓",
+
+    revealEyebrow: "Verified · Authentic · Non-refundable",
+    reveal: "you are my valentine.",
+    revealSub: "The system has spoken. The captcha agrees. There is no appeals process.",
+    senderLabel: "— sender · ",
+    startOver: "start over (you'll just end up here again)",
+  },
+
+  de: {
+    pageTitle: "Du hast einen Valentinsgruß erhalten",
+    metaSecure: "SICHERE ÜBERTRAGUNG",
+    stages: ["01 / VERIFIZIERUNG", "02 / BILD-AUFGABE", "03 / LETZTE BESTÄTIGUNG", "04 / VERIFIZIERT"],
+    defaultTo: "Du",
+    defaultFrom: "Dein heimlicher Verehrer",
+    promptDefault: "ein Herz",
+
+    stamp: "Priorität · 1. Klasse",
+    deliveredTo: "Persönlich zugestellt an",
+    title: "du hast *einen Valentinsgruß* erhalten.",
+    subtitle: (toName, hasName) =>
+      `Aus Sicherheitsgründen bitte bestätigen, dass du ein echter Mensch bist${hasName ? ` und tatsächlich ${toName}` : ""}. Bots haben dieses Jahr entschieden zu viele Valentinsgrüße bekommen.`,
+    notRobot: "Ich bin kein Roboter",
+    verifiedHuman: "Verifiziert. Wirkt menschlich genug.",
+    captchaTerms: "Datenschutz · AGB",
+    diagnostics: [
+      "Analysiere deinen Puls…",
+      "Vergleiche mit meinem Tagebuch…",
+      "Prüfe auf Warnsignale…",
+      "Suche nach jemandem Besseren… nichts gefunden.",
+      "Frage deine Mutter um Erlaubnis…",
+      "Prüfe, ob du meine Ex bist…",
+      "Lese deine Nachrichten von 2021 noch einmal…",
+      "Berechne Kompatibilität (verdächtig hoch)…",
+    ],
+    passPreparing: "✓ bestanden. Aufgabe wird vorbereitet…",
+    fromLabel: (from) => `Von ${from}`,
+    declineLabels: ["ablehnen", "nein, wirklich ablehnen", "also gut, ablehnen"],
+    declineQuit: "Ablehnen-Button hat gekündigt",
+
+    selectAllWith: "Wähle alle Felder mit",
+    hint: "Wenn keine dabei sind, klicke auf Bestätigen.",
+    errNoneSelected: (prompt) => `Bitte wähle alle Bilder mit ${prompt}.`,
+    errAll: [
+      (n) => `Fast — ${n} fehlen noch. Schau genauer.`,
+      (n, prompt) => `Immer noch ${n}. Auf allen ist ${prompt}. Ich habe nachgesehen.`,
+      (n) => `${n} nicht ausgewählt. Das wird jetzt persönlich.`,
+    ],
+    errSpecific: ["Nicht ganz — versuch es noch einmal.", "Weiterhin falsch. Schau genauer.", "Das wird jetzt persönlich."],
+    reloadAll: (prompt) => `Neu laden hat nicht geholfen. Auf allen ist weiterhin ${prompt}.`,
+    reloadOther: "Neu laden hat nicht geholfen. Gleiche Aufgabe.",
+    helpAll: (prompt) => `Tipp: auf jedem einzelnen ist ${prompt}.`,
+    helpOther: "Tipp: schau genau hin.",
+    verifyBtn: "BESTÄTIGEN",
+    titleReload: "Neue Aufgabe laden",
+    titleHelp: "Hilfe",
+    gridFoot: "Dieser Schritt schützt vor Bots *und* vor Menschen mit schlechterem Geschmack.",
+
+    finalConfirmation: "Letzte Bestätigung",
+    question: (from, hasFrom) =>
+      `Auf einer Skala von *0 bis ja*,\nwillst du ${hasFrom ? `${from}s` : "mein"} Valentinsschatz sein?`,
+    scale: ["NEIN", "HMM", "OK", "KLAR", "JA"],
+    readouts: ["absolut nicht", "hmm.", "na gut.", "gut, ja.", "ja, offensichtlich.", "ja, tausendmal."],
+    reconsider: "← nochmal überlegen",
+    slideAll: (pct) => `ganz nach rechts ziehen (${pct}%)`,
+    confirmBtn: "BESTÄTIGEN ✓",
+
+    revealEyebrow: "Verifiziert · Echt · Nicht erstattungsfähig",
+    reveal: "du bist mein Valentinsschatz.",
+    revealSub: "Das System hat entschieden. Das Captcha stimmt zu. Einspruch ist nicht möglich.",
+    senderLabel: "— Absender · ",
+    startOver: "nochmal von vorn (du landest eh wieder hier)",
+  },
+};
+
+const L = STRINGS[LANG];
+
+if (typeof document !== "undefined") {
+  document.documentElement.lang = LANG;
+  document.title = L.pageTitle;
+}
+
+/* ---------------- customizable content ----------------
+   Precedence for every value: URL param → config.js → language default. */
+function pick(param, cfgKey) {
+  return getParam(param, "") || CFG[cfgKey] || "";
+}
+
+const CFG_TITLE     = pick("title", "title");
+const CFG_SUBTITLE  = pick("subtitle", "subtitle");
+const CFG_PROMPT    = pick("prompt", "challengePrompt") || L.promptDefault;
+const CFG_HINT      = pick("hint", "hint") || L.hint;
+const CFG_QUESTION  = pick("question", "question");
+const CFG_REVEAL    = pick("reveal", "reveal");
+const CFG_SCALE     = parseList(getParam("scale", "")) || parseList(CFG.scale) || L.scale;
+const CFG_READOUTS  = parseList(getParam("readouts", "")) || parseList(CFG.readouts) || L.readouts;
+
+// Captcha images: ?img1 … ?img9  (1-based, matching the grid labels).
+// config.images is a plain array, so config.images[0] is cell 1.
 function urlImages() {
   const out = [];
-  for (let i = 0; i < 9; i++) {
-    out.push(getParam("img" + i, null));
-  }
+  for (let i = 1; i <= 9; i++) out.push(getParam("img" + i, null));
   return out;
 }
 const URL_IMAGES = urlImages();
@@ -30,16 +199,36 @@ const CFG_IMAGES_RAW = Array.isArray(CFG.images) ? CFG.images : [];
 // Merge: URL beats config beats null
 const CFG_IMAGES = Array.from({length: 9}, (_, i) => URL_IMAGES[i] || CFG_IMAGES_RAW[i] || null);
 
-const CFG_PROMPT = getParam("prompt", "") || CFG.challengePrompt || "a heart";
-
-// Correct cells: ?cells=all | any | 0,3,8
+// Correct cells: ?cells=all | any | 1,3,5
+// Cell numbers are 1–9, counted left-to-right, top-to-bottom — the same
+// numbering the customize form uses. Stored 0-based internally.
 function parseCorrect(raw) {
   if (!raw) return null;
-  if (raw === "all" || raw === "any") return raw;
-  const parts = raw.split(",").map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
-  return parts.length ? parts : null;
+  const mode = String(raw).trim().toLowerCase();
+  if (mode === "all" || mode === "any") return mode;
+  const parts = (Array.isArray(raw) ? raw : String(raw).split(","))
+    .map(n => parseInt(String(n).trim(), 10))
+    .filter(n => !isNaN(n) && n >= 1 && n <= 9)
+    .map(n => n - 1);
+  return parts.length ? [...new Set(parts)] : null;
 }
-const CFG_CORRECT = parseCorrect(getParam("cells", "")) || CFG.correctCells || "all";
+const CFG_CORRECT =
+  parseCorrect(getParam("cells", "")) || parseCorrect(CFG.correctCells) || "all";
+
+/* Renders a customizable string: *asterisks* become the italic accent,
+   "\n" becomes a line break. Plain text only — never raw HTML. */
+function RichText({ text }) {
+  return String(text).split(/\\n|\n/).map((line, li) => (
+    <React.Fragment key={li}>
+      {li > 0 && <br/>}
+      {line.split(/(\*[^*]+\*)/g).filter(Boolean).map((part, i) =>
+        part.length > 2 && part.startsWith("*") && part.endsWith("*")
+          ? <em key={i}>{part.slice(1, -1)}</em>
+          : <React.Fragment key={i}>{part}</React.Fragment>
+      )}
+    </React.Fragment>
+  ));
+}
 
 function Heart({ size = 24, fill = "currentColor", style }) {
   return (
@@ -147,17 +336,14 @@ function CellArt({ idx, src }) {
   );
 }
 
-/* ---------------- diagnostic messages ---------------- */
-const DIAGNOSTICS = [
-  "Analyzing your heart rate…",
-  "Cross-referencing with my diary…",
-  "Checking for red flags…",
-  "Looking for someone better… none found.",
-  "Asking your mom for permission…",
-  "Verifying you're not my ex…",
-  "Re-reading your texts from 2021…",
-  "Calculating compatibility (suspiciously high)…",
-];
+/* Picks the readout phrase for the current slider value — works with any
+   number of phrases; the last one is reserved for "all the way". */
+function readoutFor(val, list) {
+  if (!list.length) return "";
+  if (val >= 100) return list[list.length - 1];
+  const rest = list.length > 1 ? list.length - 1 : 1;
+  return list[Math.min(rest - 1, Math.floor((val / 100) * rest))];
+}
 
 /* ---------------- main app ---------------- */
 function App() {
@@ -168,8 +354,12 @@ function App() {
   const urlTo = getParam("to", "") || getParam("name", "");
   const urlFrom = getParam("from", "") || getParam("by", "");
   const urlMsg = getParam("msg", "") || getParam("message", "");
-  const toName = (tweaks.to || urlTo || CFG.to || "You").trim();
-  const fromName = (tweaks.from || urlFrom || CFG.from || "Your Secret Admirer").trim();
+  const rawTo = tweaks.to || urlTo || CFG.to || "";
+  const rawFrom = tweaks.from || urlFrom || CFG.from || "";
+  const hasTo = Boolean(rawTo.trim());
+  const hasFrom = Boolean(rawFrom.trim());
+  const toName = (rawTo || L.defaultTo).trim();
+  const fromName = (rawFrom || L.defaultFrom).trim();
   const message = tweaks.message || urlMsg || CFG.message || "";
 
   // Stages: intro -> imageGrid -> slider -> reveal
@@ -188,7 +378,7 @@ function App() {
     setDiagIdx(0);
     let i = 0;
     const id = setInterval(() => {
-      i = (i + 1) % DIAGNOSTICS.length;
+      i = (i + 1) % L.diagnostics.length;
       setDiagIdx(i);
     }, 850);
     const done = setTimeout(() => {
@@ -235,37 +425,31 @@ function App() {
     if (pass) { setStage("slider"); return; }
 
     if (selected.size === 0) {
-      setGridError(`Please select all images containing ${CFG_PROMPT}.`);
+      setGridError(L.errNoneSelected(CFG_PROMPT));
       return;
     }
     setGridAttempts(a => a + 1);
     if (correctMode === "all") {
       const remaining = 9 - selected.size;
-      if (gridAttempts === 0)      setGridError(`Almost — you missed ${remaining}. Look closer.`);
-      else if (gridAttempts === 1) setGridError(`Still ${remaining} more. They all have ${CFG_PROMPT}. Trust me, I checked.`);
-      else                          setGridError(`${remaining} unselected. This is starting to feel personal.`);
+      const step = Math.min(gridAttempts, L.errAll.length - 1);
+      setGridError(L.errAll[step](remaining, CFG_PROMPT));
     } else {
-      if (gridAttempts === 0)      setGridError(`Not quite — try again.`);
-      else if (gridAttempts === 1) setGridError(`Still wrong. Look closer.`);
-      else                          setGridError(`This is starting to feel personal.`);
+      const step = Math.min(gridAttempts, L.errSpecific.length - 1);
+      setGridError(L.errSpecific[step]);
     }
   }
 
   function reloadGrid() {
     setSelected(new Set());
-    setGridError(`Refreshing didn't help. ${correctMode === "all" ? "They're still all " + CFG_PROMPT + "." : "Same challenge."}`);
+    setGridError(correctMode === "all" ? L.reloadAll(CFG_PROMPT) : L.reloadOther);
   }
 
   // slider challenge state
   const [sliderVal, setSliderVal] = useState(0);
-  const sliderLabel = useMemo(() => {
-    if (sliderVal < 10) return "absolutely not";
-    if (sliderVal < 30) return "hmm.";
-    if (sliderVal < 55) return "i guess.";
-    if (sliderVal < 80) return "fine, yes.";
-    if (sliderVal < 99) return "yes, obviously.";
-    return "yes, a thousand times.";
-  }, [sliderVal]);
+  const sliderLabel = useMemo(
+    () => readoutFor(sliderVal, CFG_READOUTS),
+    [sliderVal]
+  );
 
   function confirmSlider() {
     if (sliderVal >= 100) setStage("reveal");
@@ -301,25 +485,25 @@ function App() {
   }, [stage]);
 
   /* -------- renders -------- */
-  const stageLabel = stage === "intro" ? "01 / VERIFICATION"
-    : stage === "grid" ? "02 / IMAGE CHALLENGE"
-    : stage === "slider" ? "03 / FINAL CONFIRMATION"
-    : "04 / VERIFIED";
+  const stageLabel = stage === "intro" ? L.stages[0]
+    : stage === "grid" ? L.stages[1]
+    : stage === "slider" ? L.stages[2]
+    : L.stages[3];
 
   return (
     <div className="stage">
       <div className="meta-row">
-        <span><span className="dot"></span>SECURE TRANSMISSION</span>
+        <span><span className="dot"></span>{L.metaSecure}</span>
         <span>{stageLabel}</span>
       </div>
 
       {stage === "intro" && (
         <div className="card fade-in" key="intro">
-          <div className="stamp">Priority · 1ST class</div>
-          <h1 className="eyebrow">Hand-Delivered To</h1>
-          <h2 className="title">{toName},<br/>you've received <em>a Valentine.</em></h2>
+          <div className="stamp">{L.stamp}</div>
+          <h1 className="eyebrow">{L.deliveredTo}</h1>
+          <h2 className="title">{toName},<br/><RichText text={CFG_TITLE || L.title} /></h2>
           <p className="subtitle">
-            For security reasons, please verify you are a real human{toName !== "You" ? ` and that you are, in fact, ${toName}` : ""}. Bots have been receiving entirely too many valentines this year.
+            {CFG_SUBTITLE || L.subtitle(toName, hasTo)}
           </p>
 
           <div className="captcha-widget">
@@ -331,22 +515,22 @@ function App() {
               tabIndex={0}
             />
             <div className="captcha-label">
-              {checkState === "done" ? "Verified. You seem human enough." : "I'm not a robot"}
+              {checkState === "done" ? L.verifiedHuman : L.notRobot}
             </div>
             <div className="captcha-brand">
               <Heart size={18} />
               <span className="logo">cuteCAPTCHA</span>
-              <span className="terms">Privacy · Terms</span>
+              <span className="terms">{L.captchaTerms}</span>
             </div>
           </div>
 
           <div className="status-line">
-            {checkState === "loading" && (<><span className="blink">{DIAGNOSTICS[diagIdx]}</span></>)}
-            {checkState === "done" && <>✓ pass. preparing challenge…</>}
+            {checkState === "loading" && (<><span className="blink">{L.diagnostics[diagIdx]}</span></>)}
+            {checkState === "done" && <>{L.passPreparing}</>}
           </div>
 
           <div className="actions">
-            <span className="footnote">From {fromName}</span>
+            <span className="footnote">{L.fromLabel(fromName)}</span>
             {!declineGone ? (
               <button
                 ref={declineRef}
@@ -356,10 +540,10 @@ function App() {
                 onFocus={dodgeDecline}
                 onClick={(e)=>{ e.preventDefault(); dodgeDecline(); }}
               >
-                {declineDodges === 0 ? "decline" : declineDodges === 1 ? "no really, decline" : "fine, decline"}
+                {L.declineLabels[Math.min(declineDodges, L.declineLabels.length - 1)]}
               </button>
             ) : (
-              <span className="footnote" style={{opacity:0.6}}>decline button quit</span>
+              <span className="footnote" style={{opacity:0.6}}>{L.declineQuit}</span>
             )}
           </div>
         </div>
@@ -372,8 +556,8 @@ function App() {
           )}
           <div className="challenge">
             <div className="challenge-header">
-              <strong>Select all squares with</strong>
-              <span className="hint"><Heart size={12} fill="#fff" style={{display:"inline",verticalAlign:"-2px",marginRight:4}}/>{CFG_PROMPT}. If there are none, click verify.</span>
+              <strong>{L.selectAllWith}</strong>
+              <span className="hint"><Heart size={12} fill="#fff" style={{display:"inline",verticalAlign:"-2px",marginRight:4}}/>{CFG_PROMPT}. {CFG_HINT}</span>
             </div>
             <div className="grid">
               {cells.map((src, i) => (
@@ -388,25 +572,23 @@ function App() {
             </div>
             <div className="challenge-foot">
               <div style={{display:"flex",gap:4}}>
-                <button className="icon-btn" onClick={reloadGrid} title="Get a new challenge">↻</button>
-                <button className="icon-btn" title="Audio challenge (unavailable)" onClick={()=>setGridError("Audio challenge unavailable. Use your eyes.")}>♪</button>
-                <button className="icon-btn" title="Help" onClick={()=>setGridError(correctMode === "all" ? `Hint: every single one is ${CFG_PROMPT}.` : `Hint: look carefully.`)}>?</button>
+                <button className="icon-btn" onClick={reloadGrid} title={L.titleReload}>↻</button>
+                <button className="icon-btn" title={L.titleHelp} onClick={()=>setGridError(correctMode === "all" ? L.helpAll(CFG_PROMPT) : L.helpOther)}>?</button>
               </div>
-              <button className="verify-btn" onClick={verifyGrid}>VERIFY</button>
+              <button className="verify-btn" onClick={verifyGrid}>{L.verifyBtn}</button>
             </div>
           </div>
           <p className="subtitle" style={{margin:0, fontSize:12.5, color:"var(--ink-3)", textAlign:"center"}}>
-            This step protects against bots <em>and</em> people with worse taste.
+            <RichText text={L.gridFoot} />
           </p>
         </div>
       )}
 
       {stage === "slider" && (
         <div className="card fade-in" key="slider">
-          <h1 className="eyebrow">Final Confirmation</h1>
+          <h1 className="eyebrow">{L.finalConfirmation}</h1>
           <h2 className="title" style={{fontSize:36, marginBottom:18}}>
-            On a scale of <em>0 to yes</em>,<br/>
-            will you be {fromName !== "Your Secret Admirer" ? <>{fromName}'s</> : "my"} valentine?
+            <RichText text={CFG_QUESTION || L.question(fromName, hasFrom)} />
           </h2>
 
           <div className="slider-challenge">
@@ -420,7 +602,7 @@ function App() {
                 onChange={e => setSliderVal(parseInt(e.target.value, 10))}
               />
               <div className="slider-labels">
-                <span>NO</span><span>MEH</span><span>OK</span><span>SURE</span><span>YES</span>
+                {CFG_SCALE.map((label, i) => <span key={i}>{label}</span>)}
               </div>
             </div>
             <div className="slider-readout">"{sliderLabel}"</div>
@@ -431,14 +613,14 @@ function App() {
               className="decline"
               onClick={() => setSliderVal(s => Math.max(0, s - 25))}
               style={{textDecoration:"none"}}
-            >← reconsider</button>
+            >{L.reconsider}</button>
             <button
               className="verify-btn"
               onClick={confirmSlider}
               disabled={sliderVal < 100}
               style={{background: sliderVal >= 100 ? "var(--red)" : undefined}}
             >
-              {sliderVal < 100 ? `slide all the way (${sliderVal}%)` : "CONFIRM ✓"}
+              {sliderVal < 100 ? L.slideAll(sliderVal) : L.confirmBtn}
             </button>
           </div>
         </div>
@@ -459,26 +641,24 @@ function App() {
           </div>
           <div className="card reveal-card fade-in" key="reveal">
             <div className="seal"><Heart size={64} /></div>
-            <p className="reveal-eyebrow">Verified · Authentic · Non-refundable</p>
+            <p className="reveal-eyebrow">{L.revealEyebrow}</p>
             <h2 className="reveal-title">
               <span className="name">{toName}</span>,<br/>
-              you are my valentine.
+              <RichText text={CFG_REVEAL || L.reveal} />
             </h2>
             <p className="reveal-sub">
-              {message
-                ? message
-                : <>The system has spoken. The captcha agrees. There is no appeals process.</>}
+              {message ? message : L.revealSub}
             </p>
             <div className="signature">
               {fromName}
-              <small>— sender · {new Date().toLocaleDateString(undefined,{month:"short",day:"numeric"})}</small>
+              <small>{L.senderLabel}{new Date().toLocaleDateString(LANG,{month:"short",day:"numeric"})}</small>
             </div>
 
             <div style={{marginTop:24}}>
               <button
                 className="decline"
                 onClick={() => { setStage("intro"); setCheckState("idle"); setSelected(new Set()); setSliderVal(0); setDeclineGone(false); setDeclineDodges(0); setDeclineDx(0); }}
-              >start over (you'll just end up here again)</button>
+              >{L.startOver}</button>
             </div>
           </div>
         </>
