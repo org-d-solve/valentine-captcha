@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Customize your Valentine — link builder</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Build a personalized Valentine link — fill in names, message and pictures, get the finished link to send." />
+<link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  #root { display: none; } /* styles.css centers #root; unused on this page */
+
+  .wrap {
+    width: min(920px, 100%);
+    margin: 0 auto;
+    padding: 32px 16px 48px;
+    position: relative;
+    z-index: 1;
+  }
+
+  header .title { font-size: 34px; }
+  header .subtitle { max-width: 560px; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .card h2 {
+    font-family: "Instrument Serif", serif;
+    font-weight: 400;
+    font-size: 22px;
+    margin: 0 0 4px;
+  }
+  .card .card-lead {
+    color: var(--ink-3);
+    font-size: 12.5px;
+    margin: 0 0 18px;
+  }
+
+  fieldset {
+    border: none;
+    padding: 0;
+    margin: 0 0 20px;
+  }
+  fieldset legend {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 0 0 8px;
+  }
+
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .field input {
+    width: 100%;
+    font: inherit;
+    font-size: 13.5px;
+    padding: 9px 10px;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink);
+  }
+  .field input:focus {
+    outline: none;
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px var(--red-soft);
+  }
+  .field .hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--ink-3);
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  .grid-9 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .grid-9 .field { margin-bottom: 0; }
+  .grid-9 .field label { font-size: 11px; }
+  .grid-9 .field input { font-size: 11.5px; padding: 7px 8px; }
+
+  .link-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .link-row input {
+    flex: 1;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    padding: 10px;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    background: #fafafa;
+    color: var(--ink-2);
+  }
+  .btn {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--red); color: #fff; }
+  .btn-primary:hover { background: var(--red-deep); }
+  .btn-secondary {
+    background: #fff;
+    border: 1px solid var(--line-2);
+    color: var(--ink-2);
+  }
+  .btn-secondary:hover { background: #f5f0e6; }
+
+  .preview-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .preview-row h2 { margin: 0; }
+
+  iframe.preview {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .sticky-output {
+    position: sticky;
+    top: 20px;
+  }
+
+  footer.page-footer {
+    text-align: center;
+    margin-top: 36px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: var(--ink-3);
+  }
+  footer.page-footer a {
+    color: var(--ink-3);
+    border-bottom: 1px dotted var(--line-2);
+    text-decoration: none;
+  }
+  footer.page-footer a:hover { color: var(--ink-2); }
+  footer.page-footer .sep { margin: 0 8px; opacity: 0.5; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="meta-row"><span><span class="dot"></span>LINK BUILDER</span><span>CUSTOMIZE</span></div>
+      <h1 class="title">Build your own <em>Valentine link.</em></h1>
+      <p class="subtitle">
+        Fill in whatever you want below — nothing here gets saved or sent anywhere, the link is put
+        together entirely in your browser. Leave a field empty to fall back to its default
+        (a name shows as "You" / "Your Secret Admirer", empty picture cells show the built-in heart).
+      </p>
+    </header>
+
+    <div class="layout">
+      <form id="builder" class="card" autocomplete="off">
+        <fieldset>
+          <legend>Hosting</legend>
+          <div class="field">
+            <label for="baseUrl">Base URL</label>
+            <input type="text" id="baseUrl" name="baseUrl" placeholder="https://love.d-solve.de/" />
+            <small class="hint">Defaults to wherever this page is hosted. Only change this if you're building a link for someone else's self-hosted copy.</small>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Names &amp; message</legend>
+          <div class="field">
+            <label for="to">To (recipient's name)</label>
+            <input type="text" id="to" name="to" placeholder="Sarah" />
+            <small class="hint">Shown big on the intro screen and on the reveal. Example: Sarah</small>
+          </div>
+          <div class="field">
+            <label for="from">From (your name)</label>
+            <input type="text" id="from" name="from" placeholder="Alex" />
+            <small class="hint">Shown on the reveal screen's signature. Example: Alex</small>
+          </div>
+          <div class="field">
+            <label for="msg">Reveal message</label>
+            <input type="text" id="msg" name="msg" placeholder="Be mine forever?" />
+            <small class="hint">Custom text on the final reveal card. Example: Be mine forever?</small>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Captcha challenge</legend>
+          <div class="field">
+            <label for="prompt">What to find</label>
+            <input type="text" id="prompt" name="prompt" placeholder="a shared memory" />
+            <small class="hint">Fills in "Select all squares with ___". Example: a shared memory</small>
+          </div>
+          <div class="field">
+            <label for="cells">Correct cells</label>
+            <input type="text" id="cells" name="cells" placeholder="all" />
+            <small class="hint">"all" (default) · "any" · or a list of cell numbers 0–8, e.g. 1,3,5</small>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Picture grid (3×3, top-left to bottom-right)</legend>
+          <div class="grid-9">
+            <div class="field">
+              <label for="img0">Cell 1</label>
+              <input type="text" id="img0" name="img0" placeholder="https://dummyimage.com/600x400/000/fff&text=test-image-1" />
+            </div>
+            <div class="field">
+              <label for="img1">Cell 2</label>
+              <input type="text" id="img1" name="img1" placeholder="https://dummyimage.com/600x400/000/fff&text=test-image-2" />
+            </div>
+            <div class="field">
+              <label for="img2">Cell 3</label>
+              <input type="text" id="img2" name="img2" placeholder="https://dummyimage.com/600x400/000/fff&text=test-image-3" />
+            </div>
+            <div class="field">
+              <label for="img3">Cell 4</label>
+              <input type="text" id="img3" name="img3" placeholder="https://dummyimage.com/600x400/000/fff&text=test-image-4" />
+            </div>
+            <div class="field">
+              <label for="img4">Cell 5</label>
+              <input type="text" id="img4" name="img4" placeholder="https://dummyimage.com/600x400/000/fff&text=test-image-5" />
+            </div>
+            <div class="field">
+              <label for="img5">Cell 6</label>
+              <input type="text" id="img5" name="img5" placeholder="https://dummyimage.com/600x400/000/fff&text=test-image-6" />
+            </div>
+            <div class="field">
+              <label for="img6">Cell 7</label>
+              <input type="text" id="img6" name="img6" placeholder="https://dummyimage.com/600x400/000/fff&text=test-image-7" />
+            </div>
+            <div class="field">
+              <label for="img7">Cell 8</label>
+              <input type="text" id="img7" name="img7" placeholder="https://dummyimage.com/600x400/000/fff&text=test-image-8" />
+            </div>
+            <div class="field">
+              <label for="img8">Cell 9</label>
+              <input type="text" id="img8" name="img8" placeholder="https://dummyimage.com/600x400/000/fff&text=test-image-9" />
+            </div>
+          </div>
+          <small class="hint" style="margin-top:10px;display:block;">Leave any cell empty to keep the built-in heart placeholder. Any image URL works — these dummyimage.com links are just quick stand-ins for testing.</small>
+        </fieldset>
+      </form>
+
+      <div class="sticky-output">
+        <div class="card output">
+          <h2>Your link</h2>
+          <p class="card-lead">Updates live as you type.</p>
+          <div class="link-row">
+            <input type="text" id="output-url" readonly />
+            <button type="button" class="btn btn-primary" id="copy-btn">Copy</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <div class="preview-row">
+            <h2>Preview</h2>
+            <button type="button" class="btn btn-secondary" id="preview-btn">Update ↻</button>
+          </div>
+          <p class="card-lead">Loads the link above in a live frame — click "Update" after editing fields above.</p>
+          <iframe class="preview" id="preview-frame" title="Live Valentine preview"></iframe>
+        </div>
+      </div>
+    </div>
+
+    <footer class="page-footer">
+      powered by <a href="https://d-solve.de" target="_blank" rel="noopener noreferrer">d-solve.de</a>
+      <span class="sep">·</span>
+      <a href="../">back to the Valentine page</a>
+      <span class="sep">·</span>
+      <a href="https://github.com/org-d-solve/valentine-captcha" target="_blank" rel="noopener noreferrer">full docs &amp; self-hosting guide</a>
+    </footer>
+  </div>
+
+  <script>
+    const form = document.getElementById('builder');
+    const outputUrl = document.getElementById('output-url');
+    const copyBtn = document.getElementById('copy-btn');
+    const previewBtn = document.getElementById('preview-btn');
+    const previewFrame = document.getElementById('preview-frame');
+
+    // Default the base URL to wherever this /customize/ page itself is hosted,
+    // so the tool works out of the box both on love.d-solve.de and on any
+    // self-hosted copy — no domain hardcoded.
+    const defaultBase = new URL('../', window.location.href).href;
+    form.baseUrl.value = defaultBase;
+
+    function buildUrl() {
+      let base = form.baseUrl.value.trim() || defaultBase;
+      let u;
+      try {
+        u = new URL(base);
+      } catch {
+        u = new URL(defaultBase);
+      }
+      u.search = '';
+
+      const setIfFilled = (key, rawValue) => {
+        const value = rawValue.trim();
+        if (value) u.searchParams.set(key, value);
+      };
+
+      setIfFilled('to', form.to.value);
+      setIfFilled('from', form.from.value);
+      setIfFilled('msg', form.msg.value);
+      setIfFilled('prompt', form.prompt.value);
+      setIfFilled('cells', form.cells.value);
+      for (let i = 0; i < 9; i++) {
+        setIfFilled('img' + i, form['img' + i].value);
+      }
+
+      return u.toString();
+    }
+
+    function refresh() {
+      outputUrl.value = buildUrl();
+    }
+
+    form.addEventListener('input', refresh);
+    refresh();
+
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(outputUrl.value);
+        copyBtn.textContent = 'Copied!';
+      } catch {
+        outputUrl.select();
+        document.execCommand('copy');
+        copyBtn.textContent = 'Copied!';
+      }
+      setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+    });
+
+    previewBtn.addEventListener('click', () => {
+      previewFrame.src = outputUrl.value;
+    });
+  </script>
+</body>
+</html>

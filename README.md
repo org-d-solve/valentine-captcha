@@ -2,13 +2,22 @@
 
 A faux-reCAPTCHA Valentine page. Recipients have to "verify they're human" by clicking a fake captcha, selecting all 9 squares (every single one secretly contains a heart), and dragging a slider all the way to "yes" — then they're told they're your valentine. The decline button skitters away when you try to click it.
 
+> ### 🔗 Try it now: [**love.d-solve.de/customize**](https://love.d-solve.de/customize)
+> Fill in a form — names, message, challenge, pictures — and get your finished link instantly. No URL-encoding, no query-string syntax.
+
 This page is already hosted at **[love.d-solve.de](https://love.d-solve.de)** — most people just need the first section below. If you want to run your own copy instead, skip to [For developers](#-for-developers--self-hosting-this-project).
 
 ---
 
 # ❤️ For users — sending a Valentine via love.d-solve.de
 
-You don't need to install or deploy anything. Just build a URL and send it.
+You don't need to install or deploy anything.
+
+## The easy way — the customize page
+
+Go to **[love.d-solve.de/customize](https://love.d-solve.de/customize)**. Type in the recipient's name, your name, a message, the challenge prompt, which cells must be selected, and up to nine pictures for the grid — the page builds the finished link live as you type, with a "Copy" button and a live preview frame you can check before sending it. Every field has a small placeholder example showing what to type. Leave anything empty and it falls back to the default, same as below.
+
+Everything from **"The basics"** onward explains how the exact same thing works if you'd rather build the link by hand, or want to understand what the customize page is doing under the hood.
 
 ## The basics
 
@@ -127,6 +136,8 @@ valentine-captcha/
 ├── tweaks-panel.jsx    ← dev-only panel, harmless in prod (don't edit)
 ├── favicon.svg         ← browser tab icon
 ├── og-image.png        ← share preview (Slack/iMessage/Twitter), 1200×630
+├── customize/
+│   └── index.html      ← the link-builder form at /customize
 └── README.md           ← this file
 ```
 
@@ -173,7 +184,7 @@ Then open `http://localhost:8000/?to=Sarah&from=Alex`.
 
 ## 🎨 Personalising it
 
-The [user section above](#-for-users--sending-a-valentine-via-love-d-solve-de) covers URL parameters, which work on any deployment, not just `love.d-solve.de`. As a host you also get two more options:
+The [user section above](#-for-users--sending-a-valentine-via-love-d-solve-de) covers URL parameters, which work on any deployment, not just `love.d-solve.de`. The `/customize` page (`customize/index.html`) comes along with the rest of the site and works out of the box on your own deployment too — it detects its own base URL from wherever it's hosted, so `https://your-domain.com/customize` builds links against `https://your-domain.com/` automatically. As a host you also get two more options:
 
 ### Option 2 — Edit `config.js` by hand
 
