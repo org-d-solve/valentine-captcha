@@ -45,8 +45,15 @@
   .card .card-lead {
     color: var(--ink-3);
     font-size: 12.5px;
+    line-height: 1.55;
     margin: 0 0 18px;
   }
+  .card .card-lead a {
+    color: var(--red-deep);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .card .card-lead a:hover { border-bottom-color: var(--red); }
 
   fieldset {
     border: none;
@@ -577,7 +584,7 @@
       <div class="sticky-output">
         <div class="card">
           <h2>Your link</h2>
-          <p class="card-lead">Updates live as you type.</p>
+          <p class="card-lead">Updates live as you type. These links get long — run it through a <a href="https://www.shorturl.at/" target="_blank" rel="noopener noreferrer">URL shortener</a> if you want to send something tidy.</p>
           <div class="link-row">
             <input type="text" id="output-url" readonly />
             <button type="button" class="btn btn-primary" id="copy-btn">Copy</button>
