@@ -222,6 +222,125 @@ valentine-captcha/
 
 All files live in the same folder. Relative paths in `index.html` resolve to siblings, so don't shuffle them around.
 
+## ⚙️ How it works
+
+There is no server anywhere in this project. **The link is the database.**
+
+```
+customize/index.html    →    the link    →    index.html + app.jsx
+form fields → a string       carries           reads the string →
+                             everything        renders the page
+```
+
+**The customize page only builds a string.** `buildUrl()` reads the form fields and appends them as query parameters. No `fetch`, no storage, no backend — that's why the page can honestly say nothing is saved or sent anywhere. Its only cleverness is URL-encoding and the Google Drive rewrite.
+
+**The Valentine page reads itself out of the address bar.** `index.html` is byte-identical for every recipient; the entire difference comes from `window.location`:
+
+```js
+function getParam(name, fallback) {                        // app.jsx:13
+  const u = new URL(window.location.href);
+  return u.searchParams.get(name) || fallback;
+}
+```
+
+That runs **at module level, before React renders** — the `CFG_*` constants (`app.jsx:183–219`) are resolved once at load and are plain values by the time any component sees them.
+
+**One line decides where each value comes from** (`app.jsx:179`):
+
+```js
+function pick(param, cfgKey) {
+  return getParam(param, "") || CFG[cfgKey] || "";
+}
+```
+
+URL parameter → `config.js` → the built-in text of the active language. The `||` chain is what makes an empty field fall through to the next level, which is why every input on the customize page is optional.
+
+**Four small translators turn strings into structure:**
+
+| What | Where | From | To |
+|---|---|---|---|
+| `RichText` | `app.jsx:223` | `you are my *valentine.*\nreally` | `<em>` + `<br>` — never raw HTML |
+| `parseList` | `app.jsx:21` | `"NO, MEH, YES"` | `["NO","MEH","YES"]` |
+| `parseCorrect` | `app.jsx:208` | `"1,3,5"` | `[0,2,4]` (0-based internally) |
+| image merge | `app.jsx:195–203` | `img1`…`img9` | 9-slot array, empty → heart SVG |
+
+`LANG` (`app.jsx:31`) is resolved first of all and also sets `document.title` and `<html lang>`. The rest is a small state machine: `stage` runs `intro` → `challenge` → `slider` → `reveal`.
+
+**What follows from this design:**
+
+- Nothing can expire — there's no record anywhere that could be deleted.
+- Nothing is private. Everything sits visibly in the URL; whoever has the link has the content.
+- Links get long, and a `data:` URI image is expensive because it literally *is* part of the address.
+- The preview frame on the customize page needs no trickery: it just loads the finished URL.
+- **Share previews can't be personalised.** The `og:` tags in `index.html` are static, and crawlers don't run JavaScript, so every link previews as the same generic card. Only the `config.js` route (below) can fix that.
+
+## 🪶 Making it lighter: dropping React
+
+React and Babel are the whole weight of this project, and the app doesn't really use them:
+
+| | Downloaded on every page load |
+|---|---|
+| `babel.min.js` | **2.99 MB** |
+| `react` + `react-dom` | 0.14 MB |
+| all of your own files | 0.07 MB |
+
+Roughly **3.2 MB to run a four-step wizard** — and Babel compiles the JSX in the visitor's browser each time. For 12 `useState`, 4 `useEffect`, 3 `useMemo` and 2 `useRef` across four screens, a framework buys close to nothing. Plain DOM code would be about **45 KB total, with no CDN dependency and still no build step.**
+
+### Migration plan — vanilla HTML/CSS/JS
+
+The rewrite is smaller than it looks, because the interesting half of `app.jsx` is already plain JavaScript.
+
+**1. Port lines 1–219 unchanged.** `getParam`, `parseList`, `LANG`, `STRINGS`, `pick`, `urlImages`, `parseCorrect` and all the `CFG_*` constants contain no JSX and no React. Copy them into `app.js` verbatim. That's a third of the file done with zero risk, and it's the part that actually defines the product's behaviour.
+
+**2. Replace the 12 `useState` with one state object and one `render()`.**
+
+```js
+const state = { stage: "intro", checkState: "idle", selected: new Set(),
+                sliderVal: 0, /* … */ };
+
+function setState(patch) {
+  Object.assign(state, patch);
+  render();
+}
+```
+
+Every `setX(value)` becomes `setState({ x: value })`. There are only four screens and they're mutually exclusive, so re-rendering the whole card on each change is fine — no diffing needed.
+
+**3. Turn the 149 JSX tags into strings.** Each screen becomes a function returning HTML, with one escaping helper so user text can never inject markup:
+
+```js
+const esc = s => String(s).replace(/[&<>"']/g,
+  c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function introScreen() {
+  return `<div class="card">
+            <h1>${esc(toName)}, ${richText(CFG_TITLE)}</h1>
+            …
+          </div>`;
+}
+```
+
+`RichText` becomes a `richText()` function that escapes first and only then swaps `*…*` for `<em>` and `\n` for `<br>` — same guarantee as today, that user input is never treated as HTML. **Do this part carefully:** it is the one place where the rewrite can introduce a security bug that React was silently preventing.
+
+**4. Events by delegation instead of props.** One listener on the container handles every screen:
+
+```js
+root.addEventListener("click", e => {
+  const cell = e.target.closest("[data-cell]");
+  if (cell) toggleCell(Number(cell.dataset.cell));
+});
+```
+
+**5. Drop `useEffect`.** The four of them are a timer (loader diagnostics), a slider watcher, the confetti spawn and the title setter — all straightforward `setInterval` / `addEventListener` calls placed right after the render that needs them. Remember to `clearInterval` on stage changes.
+
+**6. Strip `index.html`.** Delete the three CDN `<script>` tags, change `type="text/babel"` to a plain `<script src="app.js">`, and delete `tweaks-panel.jsx` (dev-only, 23 KB). Nothing else in the file changes.
+
+**7. Verify against the existing checklist** in [Test it locally](#-test-it-locally) — it already covers every screen, both languages and the challenge modes. Extra things to check because they're the easiest to get wrong: the slider's live readout, the dodging decline button, confetti on reveal, and that a `*starred*` phrase renders italic while a literal `<b>` in a name renders as text.
+
+**What does *not* change:** `styles.css`, `config.js`, `customize/index.html`, the URL parameters, and every link anyone has already sent. This is purely an implementation swap — the product stays identical.
+
+**Realistic scope:** ~490 lines of JSX become roughly the same amount of DOM code. Half a day, and the result has no build step, no CDN dependency, and works offline.
+
 ## 🚀 Deploy
 
 Built as static HTML + JS + CSS. **No build step, no backend required.** Drop it on any host — the files in this repo are the files you deploy, byte for byte. There is no `package.json`, no bundler, no compile output, and nothing to install; `npm`/`npx` shows up below only in optional one-liners (a local web server, a syntax check).
