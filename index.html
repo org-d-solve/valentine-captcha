@@ -21,12 +21,8 @@
 <meta name="twitter:description" content="For security reasons, please verify you are a real human." />
 <meta name="twitter:image" content="og-image.png" />
 
-<!-- Fonts -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-<!-- Styles -->
+<!-- Styles. The typefaces are self-hosted from fonts/ and declared with
+     @font-face in styles.css, so this page makes no external requests. -->
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -40,13 +36,7 @@
   <!-- 1. Per-recipient config — edit this file (or template it server-side) -->
   <script src="config.js"></script>
 
-  <!-- 2. React + Babel from CDN -->
-  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
-
-  <!-- 3. App code -->
-  <script type="text/babel" src="tweaks-panel.jsx"></script>
-  <script type="text/babel" src="app.jsx"></script>
+  <!-- 2. The app. Plain JavaScript — no framework, no build step, no CDN. -->
+  <script src="app.js"></script>
 </body>
 </html>

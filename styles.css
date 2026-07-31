@@ -1,4 +1,31 @@
-:root {
+/* Self-hosted typefaces — the page makes no external requests at all.
+   Both are SIL Open Font License 1.1; these files are the Google Fonts
+   "latin" subsets. See fonts/README.md for licence and provenance.
+   Paths are relative to this stylesheet, so they resolve from /customize/ too. */
+@font-face {
+    font-family: "Instrument Serif";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("fonts/instrument-serif-latin-400-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Instrument Serif";
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url("fonts/instrument-serif-latin-400-italic.woff2") format("woff2");
+  }
+  /* One variable file covers both weights the design uses. */
+  @font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 400 500;
+    font-display: swap;
+    src: url("fonts/jetbrains-mono-latin-400-500-normal.woff2") format("woff2");
+  }
+
+  :root {
     --bg: #f5f0e6;
     --bg-2: #efe9dd;
     --paper: #ffffff;

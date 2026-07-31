@@ -209,25 +209,27 @@ Want to run your own copy instead of using `love.d-solve.de`? It's a static site
 ```
 valentine-captcha/
 ├── index.html          ← the page itself (links to everything else)
-├── styles.css          ← all styles
+├── styles.css          ← all styles, including the @font-face declarations
 ├── config.js           ← ★ per-recipient settings (names, message, images)
-├── app.jsx             ← the app logic (don't edit)
-├── tweaks-panel.jsx    ← dev-only panel, harmless in prod (don't edit)
+├── app.js              ← the app logic (don't edit)
 ├── favicon.svg         ← browser tab icon
 ├── og-image.png        ← share preview (Slack/iMessage/Twitter), 1200×630
+├── fonts/              ← the two self-hosted typefaces (~73 KB) + their licence
 ├── customize/
 │   └── index.html      ← the link-builder form at /customize
 └── README.md           ← this file
 ```
 
-All files live in the same folder. Relative paths in `index.html` resolve to siblings, so don't shuffle them around.
+Relative paths in `index.html` resolve to siblings, so don't shuffle them around. The font paths in `styles.css` resolve against the stylesheet, which is why they work from `/` and `/customize/` alike.
+
+**Nothing is fetched from the internet at runtime.** No CDN, no Google Fonts, no analytics — the files in this folder are the whole site. It runs offline, on an air-gapped network, and behind a proxy that blocks everything.
 
 ## ⚙️ How it works
 
 There is no server anywhere in this project. **The link is the database.**
 
 ```
-customize/index.html    →    the link    →    index.html + app.jsx
+customize/index.html    →    the link    →    index.html + app.js
 form fields → a string       carries           reads the string →
                              everything        renders the page
 ```
@@ -237,15 +239,15 @@ form fields → a string       carries           reads the string →
 **The Valentine page reads itself out of the address bar.** `index.html` is byte-identical for every recipient; the entire difference comes from `window.location`:
 
 ```js
-function getParam(name, fallback) {                        // app.jsx:13
+function getParam(name, fallback) {                        // app.js:15
   const u = new URL(window.location.href);
   return u.searchParams.get(name) || fallback;
 }
 ```
 
-That runs **at module level, before React renders** — the `CFG_*` constants (`app.jsx:183–219`) are resolved once at load and are plain values by the time any component sees them.
+That runs **once at load, before anything is drawn** — the `CFG_*` constants (`app.js:183–219`) are resolved immediately and are plain values from then on.
 
-**One line decides where each value comes from** (`app.jsx:179`):
+**One line decides where each value comes from** (`app.js:179`):
 
 ```js
 function pick(param, cfgKey) {
@@ -259,12 +261,12 @@ URL parameter → `config.js` → the built-in text of the active language. The 
 
 | What | Where | From | To |
 |---|---|---|---|
-| `RichText` | `app.jsx:223` | `you are my *valentine.*\nreally` | `<em>` + `<br>` — never raw HTML |
-| `parseList` | `app.jsx:21` | `"NO, MEH, YES"` | `["NO","MEH","YES"]` |
-| `parseCorrect` | `app.jsx:208` | `"1,3,5"` | `[0,2,4]` (0-based internally) |
-| image merge | `app.jsx:195–203` | `img1`…`img9` | 9-slot array, empty → heart SVG |
+| `richText` | `app.js:242` | `you are my *valentine.*\nreally` | `<em>` + `<br>` — never raw HTML |
+| `parseList` | `app.js:23` | `"NO, MEH, YES"` | `["NO","MEH","YES"]` |
+| `parseCorrect` | `app.js:208` | `"1,3,5"` | `[0,2,4]` (0-based internally) |
+| image merge | `app.js:195–203` | `img1`…`img9` | 9-slot array, empty → heart SVG |
 
-`LANG` (`app.jsx:31`) is resolved first of all and also sets `document.title` and `<html lang>`. The rest is a small state machine: `stage` runs `intro` → `challenge` → `slider` → `reveal`.
+`LANG` (`app.js:33`) is resolved first of all and also sets `document.title` and `<html lang>`. The rest is a small state machine: one `state` object (`app.js:380`) and a `render()` (`app.js:527`) that redraws the card when `stage` moves `intro` → `grid` → `slider` → `reveal`. Anything that happens *within* a stage patches the affected nodes directly, so the fade-in doesn't replay on every click and dragging the slider isn't interrupted.
 
 **What follows from this design:**
 
@@ -274,94 +276,27 @@ URL parameter → `config.js` → the built-in text of the active language. The 
 - The preview frame on the customize page needs no trickery: it just loads the finished URL.
 - **Share previews can't be personalised.** The `og:` tags in `index.html` are static, and crawlers don't run JavaScript, so every link previews as the same generic card. Only the `config.js` route (below) can fix that.
 
-## 🪶 Making it lighter: dropping React
+## 🪶 Why there's no framework
 
-React and Babel are the whole weight of this project, and the app doesn't really use them:
+This used to be React with JSX compiled in the browser by Babel Standalone. That worked, but it meant **3.1 MB of CDN downloads and a compile step on every single page load** to run a four-step wizard with a dozen pieces of state. It has since been rewritten in plain DOM code.
 
-| | Downloaded on every page load |
-|---|---|
-| `babel.min.js` | **2.99 MB** |
-| `react` + `react-dom` | 0.14 MB |
-| all of your own files | 0.07 MB |
+| | Before (React + Babel via CDN) | Now |
+|---|---|---|
+| Downloaded per page load | ~3.2 MB | **~120 KB**, all of it yours |
+| External requests | unpkg + Google Fonts | **none** |
+| Build step | none | none |
+| Works offline / air-gapped | no | **yes** |
 
-Roughly **3.2 MB to run a four-step wizard** — and Babel compiles the JSX in the visitor's browser each time. For 12 `useState`, 4 `useEffect`, 3 `useMemo` and 2 `useRef` across four screens, a framework buys close to nothing. Plain DOM code would be about **45 KB total, with no CDN dependency and still no build step.**
+What did *not* change: the URL parameters, `config.js`, `styles.css`, the customize page, and every link anyone had already sent. The rewrite was an implementation swap, not a redesign.
 
-### Migration plan — vanilla HTML/CSS/JS
+Two things are worth knowing if you edit `app.js`:
 
-The rewrite is smaller than it looks, because the interesting half of `app.jsx` is already plain JavaScript.
-
-**1. Port lines 1–219 unchanged.** `getParam`, `parseList`, `LANG`, `STRINGS`, `pick`, `urlImages`, `parseCorrect` and all the `CFG_*` constants contain no JSX and no React. Copy them into `app.js` verbatim. That's a third of the file done with zero risk, and it's the part that actually defines the product's behaviour.
-
-**2. Replace the 12 `useState` with one state object and one `render()`.**
-
-```js
-const state = { stage: "intro", checkState: "idle", selected: new Set(),
-                sliderVal: 0, /* … */ };
-
-function setState(patch) {
-  Object.assign(state, patch);
-  render();
-}
-```
-
-Every `setX(value)` becomes `setState({ x: value })`. There are only four screens and they're mutually exclusive, so re-rendering the whole card on each change is fine — no diffing needed.
-
-**3. Turn the 149 JSX tags into strings.** Each screen becomes a function returning HTML, with one escaping helper so user text can never inject markup:
-
-```js
-const esc = s => String(s).replace(/[&<>"']/g,
-  c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-
-function introScreen() {
-  return `<div class="card">
-            <h1>${esc(toName)}, ${richText(CFG_TITLE)}</h1>
-            …
-          </div>`;
-}
-```
-
-`RichText` becomes a `richText()` function that escapes first and only then swaps `*…*` for `<em>` and `\n` for `<br>` — same guarantee as today, that user input is never treated as HTML. **Do this part carefully:** it is the one place where the rewrite can introduce a security bug that React was silently preventing.
-
-**4. Events by delegation instead of props.** One listener on the container handles every screen:
-
-```js
-root.addEventListener("click", e => {
-  const cell = e.target.closest("[data-cell]");
-  if (cell) toggleCell(Number(cell.dataset.cell));
-});
-```
-
-**5. Drop `useEffect`.** The four of them are a timer (loader diagnostics), a slider watcher, the confetti spawn and the title setter — all straightforward `setInterval` / `addEventListener` calls placed right after the render that needs them. Remember to `clearInterval` on stage changes.
-
-**6. Strip `index.html`.** Delete the three CDN `<script>` tags, change `type="text/babel"` to a plain `<script src="app.js">`, and delete `tweaks-panel.jsx` (dev-only, 23 KB). Nothing else in the file changes.
-
-**7. Verify against the existing checklist** in [Test it locally](#-test-it-locally) — it already covers every screen, both languages and the challenge modes. Extra things to check because they're the easiest to get wrong: the slider's live readout, the dodging decline button, confetti on reveal, and that a `*starred*` phrase renders italic while a literal `<b>` in a name renders as text.
-
-**What does *not* change:** `styles.css`, `config.js`, `customize/index.html`, the URL parameters, and every link anyone has already sent. This is purely an implementation swap — the product stays identical.
-
-**Realistic scope:** ~490 lines of JSX become roughly the same amount of DOM code. Half a day, and the result has no build step, no CDN dependency, and works offline.
+- **Escaping is now manual.** React escaped interpolated text automatically; here every sender-supplied value goes through `esc()` (`app.js:232`) before it reaches the DOM, and `richText()` escapes *before* it adds its own `<em>`/`<br>`. If you add a screen, keep that order — it is the one place where a careless change becomes an XSS hole.
+- **Redraw granularity is deliberate.** `render()` rebuilds the card only when the stage changes. Within a stage, handlers patch individual nodes. Re-rendering everything on each click would replay the fade-in animation and, worse, break the browser's drag on the range input mid-drag.
 
 ## 🚀 Deploy
 
-Built as static HTML + JS + CSS. **No build step, no backend required.** Drop it on any host — the files in this repo are the files you deploy, byte for byte. There is no `package.json`, no bundler, no compile output, and nothing to install; `npm`/`npx` shows up below only in optional one-liners (a local web server, a syntax check).
-
-### What "no build step" actually costs you
-
-The JSX is never compiled ahead of time — `index.html` pulls React and **Babel Standalone** from a CDN and Babel compiles `app.jsx` and `tweaks-panel.jsx` *in the visitor's browser*, every single page load. That's what removes the build step, and it's worth knowing what you're trading for it:
-
-- **The page needs the internet at load time, not just at deploy time.** It fetches React, ReactDOM and Babel from `unpkg.com`, plus the two typefaces from Google Fonts. If those are unreachable — offline, air-gapped network, a corporate proxy, an ad-blocker that blanket-blocks CDNs — the page comes up blank. Self-hosting the files doesn't change that; the dependencies still come from outside.
-- **Every visitor downloads and runs a compiler.** `babel.min.js` alone is **3.0 MB** (React and ReactDOM add ~140 KB between them), and the JSX compile costs a moment on load. Babel's own documentation says not to do this in production. For a Valentine that one person opens once, it's completely fine — it's simply the reason you wouldn't build a high-traffic product this way.
-- **Availability is someone else's uptime.** The CDN URLs pin exact versions (`react@18.3.1`, `@babel/standalone@7.29.0`), so nothing shifts under you — but `unpkg.com` being reachable is out of your hands.
-
-If any of that bothers you, you can opt into a build. Compile the JSX once:
-
-```bash
-npx esbuild app.jsx tweaks-panel.jsx --loader:.jsx=jsx --outdir=dist
-```
-
-That writes plain-JS `dist/app.js` and `dist/tweaks-panel.js` that still expect `React` as a global. Then download `react.production.min.js` and `react-dom.production.min.js` next to your files, and in `index.html` point the two React `<script src>` tags at the local copies, delete the Babel `<script>` tag entirely, and replace the two `type="text/babel"` tags with ordinary `<script src="dist/app.js"></script>` / `<script src="dist/tweaks-panel.js"></script>`. Now nothing is fetched from a CDN at load time (except the Google Fonts `<link>`, which you can drop or self-host the same way).
-
-That's a real build step you'd have to re-run after every edit — which is exactly what the project avoids by default. **Vanilla deployment needs none of it.**
+Static HTML + CSS + JS. **No build step, no backend, no dependencies at all** — the files in this repo are the files you deploy, byte for byte. There is no `package.json`, nothing to install, and nothing is fetched from a third party while the page runs.
 
 ### One-click hosts
 
@@ -383,21 +318,19 @@ server {
 }
 ```
 
-Make sure `.js` is served with `Content-Type: text/javascript` (most servers do this by default).
+Two things your server should get right, both of which nearly every server does by default: serve `.js` as `Content-Type: text/javascript`, and `.woff2` as `font/woff2`. If the typefaces silently fall back to Times New Roman, that MIME type is the first thing to check.
 
 ## 👀 Test it locally
 
-### 1. Start a static server
+### 1. Open it
 
-**You cannot just double-click `index.html`** — browsers block the in-browser Babel transform over `file://` and you'll get a blank page. Serve the folder over HTTP instead. From inside the project folder:
+Double-clicking `index.html` now works — there's no compile step and nothing to fetch, so the whole flow runs straight off `file://`. Handy for a quick look.
+
+For anything you intend to trust, serve it over HTTP instead. `/customize/` needs it (it resolves its base URL from where it's served), fonts can behave differently over `file://`, and it's the only way you're testing what visitors will actually get:
 
 ```bash
 python3 -m http.server 8000     # or: npx serve .   /   php -S localhost:8000
 ```
-
-Leave it running. Stop it with `Ctrl+C` when you're done.
-
-### 2. Open the two pages
 
 | URL | What you should see |
 |---|---|
@@ -406,7 +339,7 @@ Leave it running. Stop it with `Ctrl+C` when you're done.
 
 The customize page derives its base URL from wherever it's served, so on localhost it builds `http://localhost:8000/?…` links — its **Open ↗** button and preview frame test your local copy, not the live site.
 
-### 3. Smoke-test checklist
+### 2. Smoke-test checklist
 
 Fastest path: open `/customize/`, fill a few fields, hit **Open ↗**. To test a specific thing directly, these URLs each isolate one feature:
 
@@ -423,26 +356,28 @@ http://localhost:8000/?cells=1,2,5
 # the two hints are independent: one is always visible, one is behind "?"
 http://localhost:8000/?cells=1,2,5&hint=Only%20the%20top%20row.&help=Just%20our%20trip%20photos.
 
-# your own pictures in the grid
-http://localhost:8000/?img1=https%3A%2F%2Fdummyimage.com%2F600x400%2F000%2Ffff%26text%3Dtest-image-1
+# sender-supplied text must never become markup — this must render literally
+http://localhost:8000/?to=%3Cb%3ESarah%3C%2Fb%3E
 ```
 
 Then walk the flow and check:
 
 - [ ] **Footer** — "powered by d-solve.de" is visible without scrolling, right under the card.
+- [ ] **Typefaces** — headlines are a serif, small caps text is monospaced. If everything is Times New Roman, `fonts/` isn't being served.
 - [ ] Click "I'm not a robot" → loader cycles diagnostics → the image grid appears.
 - [ ] **The challenge is passable.** With `cells=all` select all 9; with `cells=1,2,5` select exactly squares 1, 2 and 5 ([numbering](#which-squares-are-which)) → "VERIFY" advances to the slider.
 - [ ] Press **?** — the message reflects the challenge you configured (or your `help` text), and differs from the always-visible `hint` line.
-- [ ] Drag the slider fully right → "CONFIRM" → reveal screen with the recipient's name and confetti.
-- [ ] Hover "decline" a few times — it dodges, then gives up.
+- [ ] Drag the slider — the fill, the phrase and the button label follow it, and the drag isn't interrupted mid-stroke. Fully right → "CONFIRM" → reveal with the recipient's name and confetti.
+- [ ] Hover "decline" a few times — it dodges twice, then quits.
+- [ ] "start over" on the reveal returns a clean intro: unticked box, no confetti, decline button back.
 - [ ] With `?lang=de`, every button, error and loading message is German — and the browser tab title too.
 
-### 4. If the page is blank
+### 3. If the page is blank
 
-Open the browser console (F12). A `SyntaxError` pointing at a `.jsx` file means the JSX didn't compile; anything about `file://` means you skipped step 1. To check the JSX compiles without a browser at all:
+Open the browser console (F12). There's no build step, so a blank page means either a plain JavaScript error in `app.js` or a file that didn't load — the Network tab will show which. To syntax-check without a browser:
 
 ```bash
-npx esbuild app.jsx --loader:.jsx=jsx --outfile=/dev/null
+node --check app.js
 ```
 
 ## 🎨 Personalising it
@@ -523,19 +458,19 @@ app.get('/v/:slug/config.js', async (req, res) => {
 });
 ```
 
-Now each `/v/abc123/` URL pulls its own data with no rebuild. The browser fetches `/v/abc123/config.js` before `app.jsx` runs.
+Now each `/v/abc123/` URL pulls its own data with no rebuild. The browser fetches `/v/abc123/config.js` before `app.js` runs.
 
 **Equivalents:** Next.js API route, FastAPI endpoint, PHP script, Cloudflare Worker, etc. — anything that can return JavaScript.
 
 ## 🌍 Adding another language
 
-All built-in text lives in the `STRINGS` object near the top of `app.jsx`, one key per language (`en`, `de`). To add one:
+All built-in text lives in the `STRINGS` object near the top of `app.js` (`app.js:38`), one key per language (`en`, `de`). To add one:
 
 1. Copy the whole `en` block, rename the key to your language code, and translate the values. Entries that are functions (`subtitle`, `question`, `fromLabel`, the `errAll` list, …) receive the interpolated values as arguments — keep their signatures.
-2. Add the code to the guard in the `LANG` resolver just below, which currently only lets `de` through and falls back to `en` for anything else.
+2. Add the code to the guard in the `LANG` resolver just below (`app.js:33`), which currently only lets `de` through and falls back to `en` for anything else.
 3. Add an `<option>` to the language `<select>` in `customize/index.html`.
 
-Nothing else is language-aware: `document.title` and the `<html lang>` attribute are set from the active pack at startup, and the reveal date is formatted with `toLocaleDateString(LANG, …)`. Note that the `<meta>` share-preview tags in `index.html` stay static — they're read by crawlers before any JavaScript runs, so translate them per-deployment if that matters to you.
+Nothing else is language-aware: `document.title` and the `<html lang>` attribute are set from the active pack at startup, and the reveal date is formatted with `toLocaleDateString(LANG, …)`. Two caveats: the `<meta>` share-preview tags in `index.html` stay static — crawlers read them before any JavaScript runs — and `fonts/` only ships the **latin** subset, so a language needing Cyrillic or Greek needs extra font files (see `fonts/README.md`).
 
 ## 🖼️ Captcha images — practical notes
 
@@ -563,17 +498,16 @@ The current image is generic ("You've received a Valentine"). Two ways to custom
 
 The `<meta>` tags also include `og:title`, `og:description`, and the Twitter equivalents. Edit them in `index.html` if you want to customise the share text.
 
-## 🛠️ Tweaks panel
-
-There's a hidden dev panel on the page (toggled by a host environment). It does nothing in production — you can ignore it, or delete the line `<script type="text/babel" src="tweaks-panel.jsx"></script>` from `index.html` if you want to drop a file from the bundle.
-
 ## 🩹 Troubleshooting (self-hosting)
 
-**Page is blank, console says "Uncaught SyntaxError" near a JSX file**
-You opened it from `file://`. Run a static server (see "Preview locally").
+**Page is blank**
+Open the console (F12). It's plain JavaScript, so you get the real error and the real line number in `app.js`. A 404 in the Network tab means a file didn't make it into the deploy.
+
+**Text renders in Times New Roman**
+`fonts/` wasn't deployed, or your server doesn't serve `.woff2` as `font/woff2`. The page stays usable — the font stack falls back — but it won't look right.
 
 **Images don't load**
-Open the URL of one image directly in your browser. If *that* fails, the URL is wrong or the host requires auth. If it loads but is blocked in the page, check the browser console for CORS errors.
+Open the URL of one image directly in your browser. If *that* fails, the URL is wrong or the host requires auth. If it loads on its own but not in the grid, check the console for a CORS or mixed-content error.
 
 **OG preview won't update**
 Social platforms cache aggressively. Use the platform's debugger to flush:
