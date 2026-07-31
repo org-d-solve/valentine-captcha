@@ -1,0 +1,18 @@
+# Claude Code — local agent settings, not part of the site
+.claude/
+
+# OS clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Nothing here is built, but keep strays out anyway
+node_modules/
+dist/
+*.log
